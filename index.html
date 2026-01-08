@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quant Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .card {
+      background: #020617;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 0 1px #1e293b;
+    }
+
+    select {
+      padding: 8px;
+      font-size: 16px;
+      background: #020617;
+      color: #e5e7eb;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .kpi {
+      background: #020617;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #1e293b;
+    }
+
+    .kpi span {
+      display: block;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .kpi strong {
+      font-size: 22px;
+      margin-top: 5px;
+      display: block;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .GOOD { background: #16a34a; }
+    .WEAK { background: #ca8a04; }
+    .NOISE { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📈 Quant Dashboard</h1>
+  <p>Señales cuantitativas evaluadas automáticamente</p>
+
+  <div class="card">
+    <label>Activo:</label>
+    <select id="tickerSelect"></select>
+  </div>
+
+  <div class="card kpis">
+    <div class="kpi">
+      <span>Recomendación</span>
+      <strong id="rec">–</strong>
+    </div>
+    <div class="kpi">
+      <span>Retorno esperado (%)</span>
+      <strong id="ret">–</strong>
+    </div>
+    <div class="kpi">
+      <span>Confianza</span>
+      <strong id="conf">–</strong>
+    </div>
+    <div class="kpi">
+      <span>Calidad</span>
+      <strong id="quality">–</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <canvas id="chart" height="120"></canvas>
+  </div>
+</div>
+
+<script>
+  // 🔧 CAMBIA ESTO
+  const API_BASE_URL = "https://spy-2w-price-prediction.onrender.com";
+
+  const tickerSelect = document.getElementById("tickerSelect");
+  const recEl = document.getElementById("rec");
+  const retEl = document.getElementById("ret");
+  const confEl = document.getElementById("conf");
+  const qualityEl = document.getElementById("quality");
+
+  let chart;
+
+  async function fetchJSON(url) {
+    const r = await fetch(url);
+    return r.json();
+  }
+
+  async function loadTickers() {
+    const data = await fetchJSON(`${API_BASE_URL}/signals`);
+    tickerSelect.innerHTML = "";
+
+    data.signals.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.ticker;
+      opt.textContent = s.ticker;
+      tickerSelect.appendChild(opt);
+    });
+
+    if (tickerSelect.value) {
+      loadSignal(tickerSelect.value);
+    }
+  }
+
+  async function loadSignal(ticker) {
+    const data = await fetchJSON(`${API_BASE_URL}/signals/${ticker}`);
+    const s = data.signal;
+
+    recEl.textContent = s.recommendation;
+    retEl.textContent = s.ret_ens_pct.toFixed(2);
+    confEl.textContent = s.confidence ?? "–";
+    qualityEl.innerHTML = `<span class="badge ${s.quality}">${s.quality}</span>`;
+
+    loadChart(ticker);
+  }
+
+  async function loadChart(ticker) {
+    const data = await fetchJSON(`${API_BASE_URL}/dashboard/predictions?ticker=${ticker}`);
+    const series = data.data;
+
+    const labels = series.map(x => x.prediction.date_base);
+    const prices = series.map(x => x.prediction.price_pred);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Precio esperado",
+          data: prices,
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56,189,248,0.1)",
+          tension: 0.25
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#94a3b8" } },
+          y: { ticks: { color: "#94a3b8" } }
+        }
+      }
+    });
+  }
+
+  tickerSelect.addEventListener("change", e => {
+    loadSignal(e.target.value);
+  });
+
+  loadTickers();
+</script>
+
+</body>
+</html>
