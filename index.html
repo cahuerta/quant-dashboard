@@ -54,7 +54,7 @@
 <div class="container">
 
 <h1>📈 Quant Dashboard</h1>
-<p>Estado operativo y validación temporal</p>
+<p>Modelo predictivo con validación temporal explícita</p>
 
 <div class="card">
   <label>Activo:</label>
@@ -63,14 +63,18 @@
 
 <div class="card kpis">
   <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
-  <div class="kpi"><span>Precio hoy</span><strong id="pnow">–</strong></div>
-  <div class="kpi"><span>Precio objetivo</span><strong id="ppred">–</strong></div>
+  <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
+  <div class="kpi"><span>Precio proyectado</span><strong id="ppred">–</strong></div>
   <div class="kpi"><span>Retorno esperado</span><strong id="ret">–</strong></div>
   <div class="kpi"><span>Horizonte</span><strong id="horizon">–</strong></div>
-  <div class="kpi"><span>Estado</span><strong id="state">–</strong></div>
+  <div class="kpi"><span>Seguimiento temporal</span><strong id="tracking">–</strong></div>
+  <div class="kpi"><span>Estado del modelo</span><strong id="state">–</strong></div>
 </div>
 
 <div class="card">
+  <p id="chart-info" style="color:#94a3b8;font-size:13px">
+    Predicción activa. Aún no hay datos reales para evaluación.
+  </p>
   <canvas id="chart" height="120"></canvas>
 </div>
 
@@ -84,17 +88,24 @@ let chart;
 
 async function j(url){ return (await fetch(url)).json(); }
 
+// ===============================
+// Cargar activos disponibles
+// ===============================
 async function loadTickers(){
   const d = await j(`${API}/signals`);
   sel.innerHTML = "";
   d.signals.forEach(s=>{
     const o=document.createElement("option");
-    o.value=s.ticker; o.textContent=s.ticker;
+    o.value=s.ticker;
+    o.textContent=s.ticker;
     sel.appendChild(o);
   });
   loadSignal(sel.value);
 }
 
+// ===============================
+// Cargar señal activa
+// ===============================
 async function loadSignal(t){
   const d = await j(`${API}/signals/${t}`);
   const s = d.signal;
@@ -102,25 +113,45 @@ async function loadSignal(t){
   el("rec").textContent = s.recommendation;
   el("pnow").textContent = s.price_now.toFixed(2);
   el("ppred").textContent = s.price_pred.toFixed(2);
-  el("ret").textContent = s.ret_ens_pct.toFixed(2)+"%";
+  el("ret").textContent = s.ret_ens_pct.toFixed(2) + "%";
   el("horizon").textContent = "10 días";
 
-  if (!s.confidence){
+  // Seguimiento temporal real
+  const baseDate = new Date(s.date_base);
+  const targetDate = new Date(baseDate);
+  targetDate.setDate(baseDate.getDate() + 10);
+  const today = new Date();
+  const daysLeft = Math.ceil((targetDate - today) / (1000*60*60*24));
+
+  if (daysLeft > 0) {
+    el("tracking").textContent = `Evaluación en ${daysLeft} días`;
     el("state").innerHTML = `<span class="badge OBS">En observación</span>`;
   } else {
-    el("state").innerHTML = `<span class="badge ${s.quality}">${s.quality}</span>`;
+    el("tracking").textContent = "Horizonte cumplido";
+    el("state").innerHTML = `<span class="badge ${s.quality ?? "OBS"}">${s.quality ?? "Evaluado"}</span>`;
   }
 
   loadChart(t);
 }
 
+// ===============================
+// Gráfico predicción vs realidad
+// ===============================
 async function loadChart(t){
   const p = await j(`${API}/dashboard/predictions?ticker=${t}`);
   const e = await j(`${API}/dashboard/evaluations?ticker=${t}`);
 
-  const labels = p.data.map(x=>x.prediction.date_base);
-  const pred = p.data.map(x=>x.prediction.price_pred);
-  const real = e.data.map(x=>x.price_real ?? null);
+  const labels = p.data.map(x => x.prediction.date_base);
+  const pred = p.data.map(x => x.prediction.price_pred);
+  const real = e.data.map(x => x.price_real ?? null);
+
+  if (real.every(v => v === null)) {
+    el("chart-info").textContent =
+      "Predicción activa. La curva real aparecerá cuando el horizonte se cumpla.";
+  } else {
+    el("chart-info").textContent =
+      "Comparación entre precio proyectado y precio real observado.";
+  }
 
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart"),{
@@ -128,11 +159,29 @@ async function loadChart(t){
     data:{
       labels,
       datasets:[
-        {label:"Predicción", data:pred, borderColor:"#38bdf8", tension:.3},
-        {label:"Real", data:real, borderColor:"#22c55e", tension:.3}
+        {
+          label:"Precio proyectado",
+          data:pred,
+          borderColor:"#38bdf8",
+          borderDash:[5,5],
+          tension:.3
+        },
+        {
+          label:"Precio real",
+          data:real,
+          borderColor:"#22c55e",
+          tension:.3
+        }
       ]
     },
-    options:{responsive:true}
+    options:{
+      responsive:true,
+      plugins:{ legend:{ labels:{ color:"#e5e7eb" }}},
+      scales:{
+        x:{ ticks:{ color:"#94a3b8" }},
+        y:{ ticks:{ color:"#94a3b8" }}
+      }
+    }
   });
 }
 
