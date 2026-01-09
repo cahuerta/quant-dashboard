@@ -43,9 +43,6 @@
       font-weight: 600;
       display: inline-block;
     }
-    .GOOD { background: #16a34a; }
-    .WEAK { background: #ca8a04; }
-    .NOISE { background: #dc2626; }
     .OBS { background: #334155; }
   </style>
 </head>
@@ -54,13 +51,15 @@
 <div class="container">
 
 <h1>📈 Quant Dashboard</h1>
-<p>Modelo predictivo con validación temporal explícita</p>
+<p>Modelo técnico + valor fundamental (dividendos)</p>
 
+<!-- Selector -->
 <div class="card">
   <label>Activo:</label>
   <select id="ticker"></select>
 </div>
 
+<!-- KPIs MODELO TÉCNICO -->
 <div class="card kpis">
   <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
   <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
@@ -68,9 +67,19 @@
   <div class="kpi"><span>Retorno esperado</span><strong id="ret">–</strong></div>
   <div class="kpi"><span>Horizonte</span><strong id="horizon">–</strong></div>
   <div class="kpi"><span>Seguimiento temporal</span><strong id="tracking">–</strong></div>
-  <div class="kpi"><span>Estado del modelo</span><strong id="state">–</strong></div>
+  <div class="kpi"><span>Estado modelo técnico</span><strong id="state">–</strong></div>
 </div>
 
+<!-- KPIs MODELO FUNDAMENTAL -->
+<div class="card kpis">
+  <div class="kpi"><span>Precio mercado</span><strong id="p_mkt">–</strong></div>
+  <div class="kpi"><span>Precio fundamental</span><strong id="p_fund">–</strong></div>
+  <div class="kpi"><span>Fundamental T+10</span><strong id="p_fund_t10">–</strong></div>
+  <div class="kpi"><span>Desalineación</span><strong id="mispricing">–</strong></div>
+  <div class="kpi"><span>Dividend yield</span><strong id="div_yield">–</strong></div>
+</div>
+
+<!-- GRÁFICO -->
 <div class="card">
   <p id="chart-info" style="color:#94a3b8;font-size:13px">
     Predicción activa. Aún no hay datos reales para evaluación.
@@ -104,7 +113,7 @@ async function loadTickers(){
 }
 
 // ===============================
-// Cargar señal activa
+// MODELO TÉCNICO
 // ===============================
 async function loadSignal(t){
   const d = await j(`${API}/signals/${t}`);
@@ -116,7 +125,6 @@ async function loadSignal(t){
   el("ret").textContent = s.ret_ens_pct.toFixed(2) + "%";
   el("horizon").textContent = "10 días";
 
-  // Seguimiento temporal real
   const baseDate = new Date(s.date_base);
   const targetDate = new Date(baseDate);
   targetDate.setDate(baseDate.getDate() + 10);
@@ -128,14 +136,38 @@ async function loadSignal(t){
     el("state").innerHTML = `<span class="badge OBS">En observación</span>`;
   } else {
     el("tracking").textContent = "Horizonte cumplido";
-    el("state").innerHTML = `<span class="badge ${s.quality ?? "OBS"}">${s.quality ?? "Evaluado"}</span>`;
+    el("state").innerHTML = `<span class="badge OBS">Evaluado</span>`;
   }
 
   loadChart(t);
+  loadFundamental(t);
 }
 
 // ===============================
-// Gráfico predicción vs realidad
+// MODELO FUNDAMENTAL (DIVIDENDOS)
+// ===============================
+async function loadFundamental(t){
+  const d = await j(`${API}/predict/fundamental?ticker=${t}`);
+
+  if (!d.ok) {
+    el("p_mkt").textContent = "–";
+    el("p_fund").textContent = "N/A";
+    el("p_fund_t10").textContent = "N/A";
+    el("mispricing").textContent = "–";
+    el("div_yield").textContent = "–";
+    return;
+  }
+
+  const f = d.fundamental;
+  el("p_mkt").textContent = f.price_market.toFixed(2);
+  el("p_fund").textContent = f.price_fundamental_now.toFixed(2);
+  el("p_fund_t10").textContent = f.price_fundamental_t10.toFixed(2);
+  el("mispricing").textContent = f.mispricing_pct.toFixed(1) + "%";
+  el("div_yield").textContent = f.dividend_yield_pct.toFixed(2) + "%";
+}
+
+// ===============================
+// GRÁFICO
 // ===============================
 async function loadChart(t){
   const p = await j(`${API}/dashboard/predictions?ticker=${t}`);
@@ -145,13 +177,10 @@ async function loadChart(t){
   const pred = p.data.map(x => x.prediction.price_pred);
   const real = e.data.map(x => x.price_real ?? null);
 
-  if (real.every(v => v === null)) {
-    el("chart-info").textContent =
-      "Predicción activa. La curva real aparecerá cuando el horizonte se cumpla.";
-  } else {
-    el("chart-info").textContent =
-      "Comparación entre precio proyectado y precio real observado.";
-  }
+  el("chart-info").textContent =
+    real.every(v => v === null)
+    ? "Predicción activa. La curva real aparecerá cuando se cumpla el horizonte."
+    : "Comparación entre precio proyectado y precio real observado.";
 
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart"),{
@@ -160,7 +189,7 @@ async function loadChart(t){
       labels,
       datasets:[
         {
-          label:"Precio proyectado",
+          label:"Precio proyectado (técnico)",
           data:pred,
           borderColor:"#38bdf8",
           borderDash:[5,5],
