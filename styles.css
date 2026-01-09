@@ -1,0 +1,78 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(180deg,#020617,#0f172a);
+  color: #e5e7eb;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+}
+
+h1 {
+  font-size: 26px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  margin-top: 0;
+}
+
+.card {
+  background: radial-gradient(120% 120% at top,#020617,#020617 40%,#020617cc);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #1e293b;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+select {
+  background: #020617;
+  color: #e5e7eb;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  font-size: 16px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpi span {
+  font-size: 12px;
+  color: #94a3b8;
+  letter-spacing: .04em;
+}
+
+.kpi strong {
+  font-size: 22px;
+  display: block;
+  margin-top: 6px;
+}
+
+.badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-block;
+}
+
+.OBS { background:#334155; color:#e5e7eb; }
+.GOOD { background:#16a34a; }
+.WEAK { background:#ca8a04; }
+.NOISE { background:#dc2626; }
+
+.fundamental strong { color:#38bdf8; }
+.technical strong { color:#e5e7eb; }
+
+canvas {
+  margin-top: 10px;
+}
