@@ -10,40 +10,69 @@
   <style>
     body {
       font-family: system-ui, sans-serif;
-      background: #0f172a;
+      background: linear-gradient(180deg,#020617,#0f172a);
       color: #e5e7eb;
       margin: 0;
       padding: 20px;
     }
     .container { max-width: 1100px; margin: auto; }
+
+    h1 { font-size: 26px; margin-bottom: 4px; }
+    p.subtitle { color:#94a3b8; margin-top:0; }
+
     .card {
-      background: #020617;
-      border-radius: 10px;
+      background: radial-gradient(120% 120% at top,#020617,#020617 40%,#020617cc);
+      border-radius: 16px;
       padding: 20px;
       margin-bottom: 20px;
       border: 1px solid #1e293b;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
+
     select {
       background: #020617;
       color: #e5e7eb;
-      padding: 8px;
-      border-radius: 6px;
+      padding: 10px 12px;
+      border-radius: 10px;
       border: 1px solid #334155;
+      font-size: 16px;
     }
+
     .kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 15px;
+      gap: 16px;
     }
-    .kpi span { font-size: 13px; color: #94a3b8; }
-    .kpi strong { font-size: 20px; display: block; margin-top: 4px; }
+
+    .kpi span {
+      font-size: 12px;
+      color: #94a3b8;
+      letter-spacing: .04em;
+    }
+
+    .kpi strong {
+      font-size: 22px;
+      display: block;
+      margin-top: 6px;
+    }
+
     .badge {
-      padding: 4px 10px;
+      padding: 6px 14px;
       border-radius: 999px;
       font-weight: 600;
+      font-size: 13px;
       display: inline-block;
     }
-    .OBS { background: #334155; }
+
+    .OBS { background:#334155; color:#e5e7eb; }
+    .GOOD { background:#16a34a; }
+    .WEAK { background:#ca8a04; }
+    .NOISE { background:#dc2626; }
+
+    .fundamental strong { color:#38bdf8; }
+    .technical strong { color:#e5e7eb; }
+
+    canvas { margin-top:10px; }
   </style>
 </head>
 
@@ -51,27 +80,27 @@
 <div class="container">
 
 <h1>📈 Quant Dashboard</h1>
-<p>Modelo técnico + valor fundamental (dividendos)</p>
+<p class="subtitle">Modelo técnico + valor fundamental (dividendos)</p>
 
 <!-- Selector -->
 <div class="card">
-  <label>Activo:</label>
+  <label>Activo:</label><br><br>
   <select id="ticker"></select>
 </div>
 
-<!-- KPIs MODELO TÉCNICO -->
-<div class="card kpis">
+<!-- MODELO TÉCNICO -->
+<div class="card kpis technical">
   <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
   <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
   <div class="kpi"><span>Precio proyectado</span><strong id="ppred">–</strong></div>
   <div class="kpi"><span>Retorno esperado</span><strong id="ret">–</strong></div>
   <div class="kpi"><span>Horizonte</span><strong id="horizon">–</strong></div>
-  <div class="kpi"><span>Seguimiento temporal</span><strong id="tracking">–</strong></div>
+  <div class="kpi"><span>Seguimiento</span><strong id="tracking">–</strong></div>
   <div class="kpi"><span>Estado modelo técnico</span><strong id="state">–</strong></div>
 </div>
 
-<!-- KPIs MODELO FUNDAMENTAL -->
-<div class="card kpis">
+<!-- MODELO FUNDAMENTAL -->
+<div class="card kpis fundamental">
   <div class="kpi"><span>Precio mercado</span><strong id="p_mkt">–</strong></div>
   <div class="kpi"><span>Precio fundamental</span><strong id="p_fund">–</strong></div>
   <div class="kpi"><span>Fundamental T+10</span><strong id="p_fund_t10">–</strong></div>
@@ -98,7 +127,7 @@ let chart;
 async function j(url){ return (await fetch(url)).json(); }
 
 // ===============================
-// Cargar activos disponibles
+// Activos
 // ===============================
 async function loadTickers(){
   const d = await j(`${API}/signals`);
@@ -123,19 +152,21 @@ async function loadSignal(t){
   el("pnow").textContent = s.price_now.toFixed(2);
   el("ppred").textContent = s.price_pred.toFixed(2);
   el("ret").textContent = s.ret_ens_pct.toFixed(2) + "%";
-  el("horizon").textContent = "10 días";
+  el("horizon").textContent = "10 sesiones";
 
-  const baseDate = new Date(s.date_base);
-  const targetDate = new Date(baseDate);
-  targetDate.setDate(baseDate.getDate() + 10);
-  const today = new Date();
-  const daysLeft = Math.ceil((targetDate - today) / (1000*60*60*24));
+  // 🔴 CORRECCIÓN CLAVE → backend manda el estado
+  let conf = null;
+  try {
+    conf = await j(`${API}/confidence?ticker=${t}`);
+  } catch {}
 
-  if (daysLeft > 0) {
-    el("tracking").textContent = `Evaluación en ${daysLeft} días`;
+  if (!conf || !conf.ok) {
+    el("tracking").textContent =
+      `En observación (desde ${s.date_base})`;
     el("state").innerHTML = `<span class="badge OBS">En observación</span>`;
   } else {
-    el("tracking").textContent = "Horizonte cumplido";
+    el("tracking").textContent =
+      `Evaluado (${conf.n} observaciones)`;
     el("state").innerHTML = `<span class="badge OBS">Evaluado</span>`;
   }
 
@@ -144,17 +175,14 @@ async function loadSignal(t){
 }
 
 // ===============================
-// MODELO FUNDAMENTAL (DIVIDENDOS)
+// MODELO FUNDAMENTAL
 // ===============================
 async function loadFundamental(t){
   const d = await j(`${API}/predict/fundamental?ticker=${t}`);
 
   if (!d.ok) {
-    el("p_mkt").textContent = "–";
-    el("p_fund").textContent = "N/A";
-    el("p_fund_t10").textContent = "N/A";
-    el("mispricing").textContent = "–";
-    el("div_yield").textContent = "–";
+    ["p_mkt","p_fund","p_fund_t10","mispricing","div_yield"]
+      .forEach(id=>el(id).textContent="–");
     return;
   }
 
@@ -162,8 +190,8 @@ async function loadFundamental(t){
   el("p_mkt").textContent = f.price_market.toFixed(2);
   el("p_fund").textContent = f.price_fundamental_now.toFixed(2);
   el("p_fund_t10").textContent = f.price_fundamental_t10.toFixed(2);
-  el("mispricing").textContent = f.mispricing_pct.toFixed(1) + "%";
-  el("div_yield").textContent = f.dividend_yield_pct.toFixed(2) + "%";
+  el("mispricing").textContent = f.mispricing_pct.toFixed(1)+"%";
+  el("div_yield").textContent = f.dividend_yield_pct.toFixed(2)+"%";
 }
 
 // ===============================
@@ -173,14 +201,14 @@ async function loadChart(t){
   const p = await j(`${API}/dashboard/predictions?ticker=${t}`);
   const e = await j(`${API}/dashboard/evaluations?ticker=${t}`);
 
-  const labels = p.data.map(x => x.prediction.date_base);
-  const pred = p.data.map(x => x.prediction.price_pred);
-  const real = e.data.map(x => x.price_real ?? null);
+  const labels = p.data.map(x=>x.prediction.date_base);
+  const pred = p.data.map(x=>x.prediction.price_pred);
+  const real = e.data.map(x=>x.price_real ?? null);
 
   el("chart-info").textContent =
-    real.every(v => v === null)
-    ? "Predicción activa. La curva real aparecerá cuando se cumpla el horizonte."
-    : "Comparación entre precio proyectado y precio real observado.";
+    real.every(v=>v===null)
+      ? "Predicción activa. Esperando cierre del horizonte."
+      : "Comparación entre precio proyectado y precio real.";
 
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart"),{
@@ -188,29 +216,18 @@ async function loadChart(t){
     data:{
       labels,
       datasets:[
-        {
-          label:"Precio proyectado (técnico)",
+        { label:"Precio proyectado (técnico)",
           data:pred,
           borderColor:"#38bdf8",
-          borderDash:[5,5],
-          tension:.3
-        },
-        {
-          label:"Precio real",
+          borderDash:[6,6],
+          tension:.3 },
+        { label:"Precio real",
           data:real,
           borderColor:"#22c55e",
-          tension:.3
-        }
+          tension:.3 }
       ]
     },
-    options:{
-      responsive:true,
-      plugins:{ legend:{ labels:{ color:"#e5e7eb" }}},
-      scales:{
-        x:{ ticks:{ color:"#94a3b8" }},
-        y:{ ticks:{ color:"#94a3b8" }}
-      }
-    }
+    options:{ responsive:true }
   });
 }
 
