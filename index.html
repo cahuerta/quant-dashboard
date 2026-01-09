@@ -5,75 +5,11 @@
   <title>Quant Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- CSS EXTERNO -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: linear-gradient(180deg,#020617,#0f172a);
-      color: #e5e7eb;
-      margin: 0;
-      padding: 20px;
-    }
-    .container { max-width: 1100px; margin: auto; }
-
-    h1 { font-size: 26px; margin-bottom: 4px; }
-    p.subtitle { color:#94a3b8; margin-top:0; }
-
-    .card {
-      background: radial-gradient(120% 120% at top,#020617,#020617 40%,#020617cc);
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 1px solid #1e293b;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    }
-
-    select {
-      background: #020617;
-      color: #e5e7eb;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #334155;
-      font-size: 16px;
-    }
-
-    .kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-    }
-
-    .kpi span {
-      font-size: 12px;
-      color: #94a3b8;
-      letter-spacing: .04em;
-    }
-
-    .kpi strong {
-      font-size: 22px;
-      display: block;
-      margin-top: 6px;
-    }
-
-    .badge {
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 13px;
-      display: inline-block;
-    }
-
-    .OBS { background:#334155; color:#e5e7eb; }
-    .GOOD { background:#16a34a; }
-    .WEAK { background:#ca8a04; }
-    .NOISE { background:#dc2626; }
-
-    .fundamental strong { color:#38bdf8; }
-    .technical strong { color:#e5e7eb; }
-
-    canvas { margin-top:10px; }
-  </style>
 </head>
 
 <body>
@@ -88,7 +24,7 @@
   <select id="ticker"></select>
 </div>
 
-<!-- MODELO TÉCNICO -->
+<!-- KPIs MODELO TÉCNICO -->
 <div class="card kpis technical">
   <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
   <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
@@ -99,7 +35,7 @@
   <div class="kpi"><span>Estado modelo técnico</span><strong id="state">–</strong></div>
 </div>
 
-<!-- MODELO FUNDAMENTAL -->
+<!-- KPIs MODELO FUNDAMENTAL -->
 <div class="card kpis fundamental">
   <div class="kpi"><span>Precio mercado</span><strong id="p_mkt">–</strong></div>
   <div class="kpi"><span>Precio fundamental</span><strong id="p_fund">–</strong></div>
@@ -110,7 +46,7 @@
 
 <!-- GRÁFICO -->
 <div class="card">
-  <p id="chart-info" style="color:#94a3b8;font-size:13px">
+  <p id="chart-info" class="chart-info">
     Predicción activa. Aún no hay datos reales para evaluación.
   </p>
   <canvas id="chart" height="120"></canvas>
@@ -127,7 +63,7 @@ let chart;
 async function j(url){ return (await fetch(url)).json(); }
 
 // ===============================
-// Activos
+// Cargar activos
 // ===============================
 async function loadTickers(){
   const d = await j(`${API}/signals`);
@@ -154,7 +90,7 @@ async function loadSignal(t){
   el("ret").textContent = s.ret_ens_pct.toFixed(2) + "%";
   el("horizon").textContent = "10 sesiones";
 
-  // 🔴 CORRECCIÓN CLAVE → backend manda el estado
+  // ✅ CORRECCIÓN CLAVE: backend decide el estado
   let conf = null;
   try {
     conf = await j(`${API}/confidence?ticker=${t}`);
@@ -163,11 +99,13 @@ async function loadSignal(t){
   if (!conf || !conf.ok) {
     el("tracking").textContent =
       `En observación (desde ${s.date_base})`;
-    el("state").innerHTML = `<span class="badge OBS">En observación</span>`;
+    el("state").innerHTML =
+      `<span class="badge OBS">En observación</span>`;
   } else {
     el("tracking").textContent =
       `Evaluado (${conf.n} observaciones)`;
-    el("state").innerHTML = `<span class="badge OBS">Evaluado</span>`;
+    el("state").innerHTML =
+      `<span class="badge OBS">Evaluado</span>`;
   }
 
   loadChart(t);
@@ -216,15 +154,19 @@ async function loadChart(t){
     data:{
       labels,
       datasets:[
-        { label:"Precio proyectado (técnico)",
+        {
+          label:"Precio proyectado (técnico)",
           data:pred,
           borderColor:"#38bdf8",
           borderDash:[6,6],
-          tension:.3 },
-        { label:"Precio real",
+          tension:.3
+        },
+        {
+          label:"Precio real",
           data:real,
           borderColor:"#22c55e",
-          tension:.3 }
+          tension:.3
+        }
       ]
     },
     options:{ responsive:true }
