@@ -1,12 +1,13 @@
-// js/tabs.js — Entry point FINAL Quant Dashboard (backend real, robusto)
+// js/tabs.js — Entry point FINAL Quant Dashboard (universo + señales desacoplados)
 
 const API = "https://spy-2w-price-prediction.onrender.com";
 
 class QuantDashboard {
   constructor() {
+    this.assets = [];        // UNIVERSO (tickers.json)
+    this.signalsCache = [];  // SEÑALES (estado)
     this.currentTicker = null;
     this.chart = null;
-    this.signalsCache = [];
     this.init();
   }
 
@@ -15,19 +16,27 @@ class QuantDashboard {
      ===================== */
   async init() {
     try {
-      this.updateStatus("🔄 Iniciando...", "");
+      this.updateStatus("🔄 Iniciando...", "–");
+
+      // 1️⃣ Universo
+      await this.loadAssets();
+
+      // 2️⃣ Señales (estado)
       await this.loadSignalsCache();
+
+      // 3️⃣ UI
       this.setupTickerSelect();
       this.setupTabs();
 
-      if (this.signalsCache.length > 0) {
-        this.currentTicker = this.signalsCache[0].ticker;
+      // Seleccionar primer activo del universo
+      if (this.assets.length > 0) {
+        this.currentTicker = this.assets[0].ticker;
         document.getElementById("ticker").value = this.currentTicker;
         await this.loadAnalysis(this.currentTicker);
       }
 
       this.updateStatus(
-        `✅ ${this.signalsCache.length} activos`,
+        `✅ ${this.assets.length} activos`,
         new Date().toLocaleString("es-CL")
       );
     } catch (err) {
@@ -50,6 +59,11 @@ class QuantDashboard {
   /* =====================
      DATA
      ===================== */
+  async loadAssets() {
+    const d = await this.apiGet("/assets");
+    this.assets = Array.isArray(d.assets) ? d.assets : [];
+  }
+
   async loadSignalsCache() {
     const d = await this.apiGet("/signals?min_confidence=0");
     this.signalsCache = Array.isArray(d.signals) ? d.signals : [];
@@ -68,6 +82,10 @@ class QuantDashboard {
     return isNaN(n) ? "–" : `${n.toFixed(1)}%`;
   }
 
+  getSignalForTicker(ticker) {
+    return this.signalsCache.find(s => s.ticker === ticker) || null;
+  }
+
   /* =====================
      UI SETUP
      ===================== */
@@ -75,10 +93,10 @@ class QuantDashboard {
     const select = document.getElementById("ticker");
     select.innerHTML = "";
 
-    this.signalsCache.forEach(s => {
+    this.assets.forEach(a => {
       const opt = document.createElement("option");
-      opt.value = s.ticker;
-      opt.textContent = s.ticker;
+      opt.value = a.ticker;
+      opt.textContent = a.ticker;
       select.appendChild(opt);
     });
 
@@ -115,20 +133,27 @@ class QuantDashboard {
      ===================== */
   async loadAnalysis(ticker) {
     try {
-      this.updateStatus(`Analizando ${ticker}…`, "");
-      const s = this.signalsCache.find(x => x.ticker === ticker);
-      if (!s) return;
+      this.updateStatus(`Analizando ${ticker}…`, "–");
 
-      document.getElementById("rec").textContent = s.recommendation || "–";
+      const s = this.getSignalForTicker(ticker);
+
+      // KPIs (con o sin señal)
+      document.getElementById("rec").textContent =
+        s?.recommendation || "–";
       document.getElementById("pnow").textContent =
-        s.price_now != null ? `$${Number(s.price_now).toLocaleString()}` : "–";
+        s?.price_now != null ? `$${Number(s.price_now).toLocaleString()}` : "–";
       document.getElementById("ppred").textContent =
-        s.price_pred != null ? `$${Number(s.price_pred).toLocaleString()}` : "–";
-      document.getElementById("ret").textContent = this.formatReturn(s.ret_ens_pct);
-      document.getElementById("conf").textContent = this.formatConfidence(s.confidence);
-      document.getElementById("quality").textContent = s.quality || "–";
+        s?.price_pred != null ? `$${Number(s.price_pred).toLocaleString()}` : "–";
+      document.getElementById("ret").textContent =
+        s ? this.formatReturn(s.ret_ens_pct) : "–";
+      document.getElementById("conf").textContent =
+        s ? this.formatConfidence(s.confidence) : "–";
+      document.getElementById("quality").textContent =
+        s?.quality || "–";
 
-      document.getElementById("chart-info").textContent = `Proyección ${ticker}`;
+      document.getElementById("chart-info").textContent =
+        `Proyección ${ticker}`;
+
       await this.loadChart(ticker);
 
       this.updateStatus(`✅ ${ticker} listo`, new Date().toLocaleString("es-CL"));
