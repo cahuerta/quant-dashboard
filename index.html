@@ -17,8 +17,8 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <button onclick="showTab('analysis')">📊 Análisis</button>
-    <button onclick="showTab('signals')">🚨 Señales</button>
+    <button data-tab="analysis">📊 Análisis</button>
+    <button data-tab="signals">🚨 Señales</button>
   </div>
 
   <!-- STATUS -->
@@ -73,9 +73,8 @@
 
 </div>
 
-<script src="js/api.js"></script>
-<script src="js/tabs.js"></script>
-<script src="js/analysis.js"></script>
-<script src="js/signals.js"></script>
+<!-- ✅ ÚNICO ENTRY POINT -->
+<script type="module" src="js/tabs.js"></script>
+
 </body>
 </html>
