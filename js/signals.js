@@ -1,5 +1,14 @@
-async function loadSignals() {
+// js/signals.js
+
+import { apiGet } from "./api.js";
+import { loadSignal } from "./analysis.js";
+
+// =====================
+// CARGAR TABLA DE SEÑALES
+// =====================
+export async function loadSignals() {
   const d = await apiGet("/signals?min_confidence=0");
+
   const tbody = document.querySelector("#signals-table tbody");
   tbody.innerHTML = "";
 
@@ -12,11 +21,20 @@ async function loadSignals() {
       <td>${s.recommendation}</td>
       <td>${s.ret_ens_pct}%</td>
     `;
-    tr.onclick = () => {
-      showTab("analysis");
-      document.getElementById("ticker").value = s.ticker;
+
+    tr.addEventListener("click", () => {
+      // volver a análisis
+      document.getElementById("analysis-tab").style.display = "block";
+      document.getElementById("signals-tab").style.display = "none";
+
+      // seleccionar ticker
+      const sel = document.getElementById("ticker");
+      sel.value = s.ticker;
+
+      // cargar señal
       loadSignal(s.ticker);
-    };
+    });
+
     tbody.appendChild(tr);
   });
 }
