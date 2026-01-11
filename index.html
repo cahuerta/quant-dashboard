@@ -5,53 +5,59 @@
   <title>Quant Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- CSS EXTERNO -->
   <link rel="stylesheet" href="styles.css">
-
-  <!-- Chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Badges semánticos mínimos */
+    .badge { padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+    .strong { color: #16a34a; }
+    .good   { color: #2563eb; }
+    .weak   { color: #ca8a04; }
+  </style>
 </head>
 
 <body>
 <div class="container">
-
-<h1>📈 Quant Dashboard</h1>
-<p class="subtitle">Modelo técnico + valor fundamental (dividendos)</p>
-
-<!-- Selector -->
-<div class="card">
-  <label>Activo:</label><br><br>
-  <select id="ticker"></select>
-</div>
-
-<!-- KPIs MODELO TÉCNICO -->
-<div class="card kpis technical">
-  <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
-  <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
-  <div class="kpi"><span>Precio proyectado</span><strong id="ppred">–</strong></div>
-  <div class="kpi"><span>Retorno esperado</span><strong id="ret">–</strong></div>
-  <div class="kpi"><span>Horizonte</span><strong id="horizon">–</strong></div>
-  <div class="kpi"><span>Seguimiento</span><strong id="tracking">–</strong></div>
-  <div class="kpi"><span>Estado modelo técnico</span><strong id="state">–</strong></div>
-</div>
-
-<!-- KPIs MODELO FUNDAMENTAL -->
-<div class="card kpis fundamental">
-  <div class="kpi"><span>Precio mercado</span><strong id="p_mkt">–</strong></div>
-  <div class="kpi"><span>Precio fundamental</span><strong id="p_fund">–</strong></div>
-  <div class="kpi"><span>Fundamental T+10</span><strong id="p_fund_t10">–</strong></div>
-  <div class="kpi"><span>Desalineación</span><strong id="mispricing">–</strong></div>
-  <div class="kpi"><span>Dividend yield</span><strong id="div_yield">–</strong></div>
-</div>
-
-<!-- GRÁFICO -->
-<div class="card">
-  <p id="chart-info" class="chart-info">
-    Predicción activa. Aún no hay datos reales para evaluación.
+  <h1>📈 Quant Dashboard</h1>
+  <p class="subtitle">
+    Modelo técnico + señales | Horizonte: 10 sesiones
   </p>
-  <canvas id="chart" height="120"></canvas>
-</div>
 
+  <!-- Status -->
+  <div class="status-bar">
+    <span id="status">Cargando…</span>
+    <span class="last-update" id="last-update">–</span>
+  </div>
+
+  <!-- Selectores -->
+  <div class="selectors-row">
+    <div class="card">
+      <label>🎯 Activo</label>
+      <select id="ticker"></select>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis-row">
+    <div class="card">
+      <h3>⚙️ Señal Técnica</h3>
+      <div class="kpis-grid">
+        <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
+        <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
+        <div class="kpi"><span>Precio proyectado</span><strong id="ppred">–</strong></div>
+        <div class="kpi"><span>Retorno esperado</span><strong id="ret">–</strong></div>
+        <div class="kpi"><span>Confianza</span><strong id="conf">–</strong></div>
+        <div class="kpi"><span>Calidad</span><strong id="quality">–</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card chart-card">
+    <p id="chart-info" class="chart-info">–</p>
+    <canvas id="chart"></canvas>
+  </div>
 </div>
 
 <script>
@@ -60,120 +66,168 @@ const sel = document.getElementById("ticker");
 const el = id => document.getElementById(id);
 let chart;
 
-async function j(url){ return (await fetch(url)).json(); }
+/* =======================
+   Cache local de señales
+   ======================= */
+let SIGNAL_CACHE = null;
 
-// ===============================
-// Cargar activos
-// ===============================
-async function loadTickers(){
-  const d = await j(`${API}/signals`);
-  sel.innerHTML = "";
-  d.signals.forEach(s=>{
-    const o=document.createElement("option");
-    o.value=s.ticker;
-    o.textContent=s.ticker;
-    sel.appendChild(o);
-  });
-  loadSignal(sel.value);
+/* =======================
+   Helper fetch JSON
+   ======================= */
+async function j(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await r.json();
 }
 
-// ===============================
-// MODELO TÉCNICO
-// ===============================
-async function loadSignal(t){
-  const d = await j(`${API}/signals/${t}`);
-  const s = d.signal;
+async function getSignals() {
+  if (!SIGNAL_CACHE) {
+    SIGNAL_CACHE = await j(`${API}/signals`);
+  }
+  return SIGNAL_CACHE;
+}
 
-  el("rec").textContent = s.recommendation;
-  el("pnow").textContent = s.price_now.toFixed(2);
-  el("ppred").textContent = s.price_pred.toFixed(2);
-  el("ret").textContent = s.ret_ens_pct.toFixed(2) + "%";
-  el("horizon").textContent = "10 sesiones";
-
-  // ✅ CORRECCIÓN CLAVE: backend decide el estado
-  let conf = null;
+/* =======================
+   Load tickers (ordenados por confidence)
+   ======================= */
+async function loadTickers() {
   try {
-    conf = await j(`${API}/confidence?ticker=${t}`);
-  } catch {}
+    el("status").textContent = "Cargando señales…";
+    const d = await getSignals();
 
-  if (!conf || !conf.ok) {
-    el("tracking").textContent =
-      `En observación (desde ${s.date_base})`;
-    el("state").innerHTML =
-      `<span class="badge OBS">En observación</span>`;
-  } else {
-    el("tracking").textContent =
-      `Evaluado (${conf.n} observaciones)`;
-    el("state").innerHTML =
-      `<span class="badge OBS">Evaluado</span>`;
+    sel.innerHTML = `<option value="">Selecciona un activo…</option>`;
+
+    d.signals
+      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+      .forEach(s => {
+        const o = document.createElement("option");
+        o.value = s.ticker;
+        o.textContent = `${s.ticker} | ${s.recommendation}`;
+        sel.appendChild(o);
+      });
+
+    el("status").textContent = `✅ ${d.signals.length} activos`;
+    el("last-update").textContent =
+      `Actualizado: ${new Date().toLocaleString("es-CL")}`;
+  } catch (e) {
+    el("status").textContent = "❌ Error cargando señales";
+    console.error(e);
   }
-
-  loadChart(t);
-  loadFundamental(t);
 }
 
-// ===============================
-// MODELO FUNDAMENTAL
-// ===============================
-async function loadFundamental(t){
-  const d = await j(`${API}/predict/fundamental?ticker=${t}`);
+/* =======================
+   Load single signal
+   ======================= */
+async function loadSignal(ticker) {
+  if (!ticker) return;
 
-  if (!d.ok) {
-    ["p_mkt","p_fund","p_fund_t10","mispricing","div_yield"]
-      .forEach(id=>el(id).textContent="–");
-    return;
+  try {
+    el("status").textContent = `Cargando ${ticker}…`;
+
+    const d = await getSignals();
+    const s = d.signals.find(x => x.ticker === ticker);
+    if (!s) throw new Error("Signal not found");
+
+    el("rec").textContent = s.recommendation || "–";
+    el("pnow").textContent = s.price_now !== undefined
+      ? `$${Number(s.price_now).toFixed(2)}`
+      : "–";
+    el("ppred").textContent = s.price_pred !== undefined
+      ? `$${Number(s.price_pred).toFixed(2)}`
+      : "–";
+    el("ret").textContent = s.ret_ens_pct !== undefined
+      ? `${Number(s.ret_ens_pct).toFixed(2)}%`
+      : "–";
+    el("conf").textContent = s.confidence !== null
+      ? Number(s.confidence).toFixed(3)
+      : "–";
+
+    const q = el("quality");
+    q.textContent = s.quality || "–";
+    q.className = "badge " +
+      (s.quality?.includes("STRONG") ? "strong" :
+       s.quality?.includes("GOOD")   ? "good"   :
+       "weak");
+
+    await loadChart(ticker);
+    el("status").textContent = `✅ ${ticker} listo`;
+  } catch (e) {
+    el("status").textContent = `❌ Error ${ticker}`;
+    console.error(e);
   }
-
-  const f = d.fundamental;
-  el("p_mkt").textContent = f.price_market.toFixed(2);
-  el("p_fund").textContent = f.price_fundamental_now.toFixed(2);
-  el("p_fund_t10").textContent = f.price_fundamental_t10.toFixed(2);
-  el("mispricing").textContent = f.mispricing_pct.toFixed(1)+"%";
-  el("div_yield").textContent = f.dividend_yield_pct.toFixed(2)+"%";
 }
 
-// ===============================
-// GRÁFICO
-// ===============================
-async function loadChart(t){
-  const p = await j(`${API}/dashboard/predictions?ticker=${t}`);
-  const e = await j(`${API}/dashboard/evaluations?ticker=${t}`);
+/* =======================
+   Chart (predictions + evals)
+   ======================= */
+async function loadChart(ticker) {
+  try {
+    const [pred, evals] = await Promise.all([
+      j(`${API}/dashboard/predictions/summary?ticker=${ticker}`)
+        .catch(() => ({ data: [] })),
+      j(`${API}/dashboard/evaluations/summary?ticker=${ticker}`)
+        .catch(() => ({ data: [] }))
+    ]);
 
-  const labels = p.data.map(x=>x.prediction.date_base);
-  const pred = p.data.map(x=>x.prediction.price_pred);
-  const real = e.data.map(x=>x.price_real ?? null);
+    const labels = pred.data.map(x =>
+      new Date(x.date_base).toLocaleDateString("es-CL")
+    );
+    const projected = pred.data.map(x => x.price_pred);
+    const real = evals.data.map(x => x.real_return_pct ?? null);
 
-  el("chart-info").textContent =
-    real.every(v=>v===null)
-      ? "Predicción activa. Esperando cierre del horizonte."
-      : "Comparación entre precio proyectado y precio real.";
+    el("chart-info").textContent =
+      real.some(v => v !== null)
+        ? "📊 Proyectado vs Real (evaluado)"
+        : "🔮 Predicción activa (observando)";
 
-  if(chart) chart.destroy();
-  chart = new Chart(document.getElementById("chart"),{
-    type:"line",
-    data:{
-      labels,
-      datasets:[
-        {
-          label:"Precio proyectado (técnico)",
-          data:pred,
-          borderColor:"#38bdf8",
-          borderDash:[6,6],
-          tension:.3
-        },
-        {
-          label:"Precio real",
-          data:real,
-          borderColor:"#22c55e",
-          tension:.3
+    if (chart) chart.destroy();
+
+    chart = new Chart(el("chart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Proyectado",
+            data: projected,
+            borderColor: "#38bdf8",
+            backgroundColor: "rgba(56,189,248,0.1)",
+            borderWidth: 3,
+            borderDash: [6,4],
+            tension: 0.35,
+            pointRadius: 6
+          },
+          {
+            label: "Real",
+            data: real,
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34,197,94,0.1)",
+            borderWidth: 3,
+            tension: 0.35,
+            pointRadius: real.some(v => v !== null) ? 6 : 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: false },
+          x: { ticks: { maxRotation: 45 } }
         }
-      ]
-    },
-    options:{ responsive:true }
-  });
+      }
+    });
+  } catch (e) {
+    el("chart-info").textContent = "❌ Error gráfico";
+    console.error(e);
+  }
 }
 
-sel.addEventListener("change",e=>loadSignal(e.target.value));
+/* =======================
+   Events
+   ======================= */
+sel.addEventListener("change", e => loadSignal(e.target.value));
+
 loadTickers();
 </script>
 </body>
