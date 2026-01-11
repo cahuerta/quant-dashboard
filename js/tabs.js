@@ -6,7 +6,7 @@ const API = "https://spy-2w-price-prediction.onrender.com";
 class QuantDashboard {
   constructor() {
     this.assets = [];        // UNIVERSO (tickers.json)
-    this.signalsCache = [];  // SEÑALES (estado)
+    this.signalsCache = [];  // SEÑALES (solo visor)
     this.currentTicker = null;
     this.chart = null;
     this.init();
@@ -20,7 +20,7 @@ class QuantDashboard {
       this.updateStatus("🔄 Iniciando...", "–");
 
       await this.loadAssets();        // universo
-      await this.loadSignalsCache();  // estado (solo visor)
+      await this.loadSignalsCache();  // visor señales
 
       this.setupTickerSelect();
       this.setupTabs();
@@ -137,8 +137,11 @@ class QuantDashboard {
 
       const last = data[data.length - 1];
 
-      // ❌ NO señales
-      document.getElementById("rec").textContent = "—";
+      // ✅ RECOMENDACIÓN REAL DEL MODELO
+      document.getElementById("rec").textContent =
+        last.recommendation || "MANTÉN";
+
+      // ❌ Confianza / calidad NO aplican aquí (son de signals)
       document.getElementById("conf").textContent = "—";
       document.getElementById("quality").textContent = "—";
 
