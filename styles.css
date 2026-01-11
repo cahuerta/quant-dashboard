@@ -1,78 +1,347 @@
-body {
-  font-family: system-ui, sans-serif;
-  background: linear-gradient(180deg,#020617,#0f172a);
-  color: #e5e7eb;
-  margin: 0;
-  padding: 20px;
+/* =====================================================
+   Dashboard Completo - Optimizado 2026 (FINAL)
+   ===================================================== */
+
+/* =============================
+   CSS Custom Properties
+   ============================= */
+
+:root {
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  --glass: rgba(2, 6, 23, 0.8);
+  --glass-kpi: rgba(15, 23, 42, 0.7);
+  --text-primary: #e5e7eb;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: rgba(30, 41, 59, 0.6);
+  --border-light: rgba(71, 85, 105, 0.3);
+  --accent: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.2);
+  --success: #22c55e;
+  --info: #60a5fa;
+  --warning: #facc15;
+  --danger: #f87171;
+  --radius: 20px;
+  --radius-sm: 16px;
+  --radius-pill: 999px;
+  --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.5);
+  --blur: blur(16px);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* =============================
+   Base / Reset
+   ============================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  margin: 0;
+  padding: clamp(10px, 4vw, 20px);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.3);
+  color: var(--text-primary);
+}
+
+/* =============================
+   Layout
+   ============================= */
+
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: auto;
 }
 
+/* =============================
+   Typography
+   ============================= */
+
 h1 {
-  font-size: 26px;
-  margin-bottom: 4px;
+  font-size: clamp(22px, 5vw, 28px);
+  margin-bottom: 8px;
+  font-weight: 700;
 }
 
 .subtitle {
-  color: #94a3b8;
-  margin-top: 0;
-}
-
-.card {
-  background: radial-gradient(120% 120% at top,#020617,#020617 40%,#020617cc);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-  border: 1px solid #1e293b;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-}
-
-select {
-  background: #020617;
-  color: #e5e7eb;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #334155;
+  color: var(--text-secondary);
+  margin: 0 0 24px 0;
   font-size: 16px;
 }
 
-.kpis {
+/* =============================
+   Status Bar
+   ============================= */
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  font-size: 13px;
+  padding: 12px 16px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-sm);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border-light);
+}
+
+.last-update {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* =============================
+   Cards
+   ============================= */
+
+.card {
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border-radius: var(--radius);
+  padding: clamp(20px, 4vw, 28px);
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  position: relative;
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+}
+
+/* =============================
+   Selectors
+   ============================= */
+
+.selectors-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+select {
+  background: rgba(2, 6, 23, 0.9);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  font-size: clamp(14px, 3vw, 16px);
+  min-height: 48px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+select:hover {
+  border-color: #475569;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* =============================
+   KPIs
+   ============================= */
+
+.kpis-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  gap: 20px;
+}
+
+.kpi {
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(145deg, rgba(2, 6, 23, 0.9), var(--glass-kpi));
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  transition: transform 0.3s ease;
+  position: relative;
+}
+
+@media (hover: hover) {
+  .kpi:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .kpi span {
-  font-size: 12px;
-  color: #94a3b8;
-  letter-spacing: .04em;
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 8px;
 }
 
 .kpi strong {
-  font-size: 22px;
-  display: block;
-  margin-top: 6px;
+  font-size: clamp(1.25rem, 4.5vw + 0.5rem, 1.75rem);
+  font-weight: 800;
 }
+
+/* KPI estados semánticos */
+.kpi.positive strong { color: var(--success); }
+.kpi.negative strong { color: var(--danger); }
+.kpi.neutral strong  { color: var(--text-secondary); }
+
+/* =============================
+   Badges semánticos
+   ============================= */
 
 .badge {
-  padding: 6px 14px;
-  border-radius: 999px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
   font-weight: 600;
   font-size: 13px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
 }
 
-.OBS { background:#334155; color:#e5e7eb; }
-.GOOD { background:#16a34a; }
-.WEAK { background:#ca8a04; }
-.NOISE { background:#dc2626; }
+.badge[data-quality="STRONG"] {
+  background: rgba(22, 163, 74, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
 
-.fundamental strong { color:#38bdf8; }
-.technical strong { color:#e5e7eb; }
+.badge[data-quality="GOOD"] {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--info);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.badge[data-quality="WEAK"] {
+  background: rgba(202, 138, 4, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(202, 138, 4, 0.3);
+}
+
+.badge[data-quality="NOISE"] {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+/* =============================
+   Skeleton loader
+   ============================= */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.05) 25%,
+    rgba(255,255,255,0.1) 37%,
+    rgba(255,255,255,0.05) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease infinite;
+  border-radius: inherit;
+}
+
+@keyframes skeleton {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* =============================
+   Flash feedback
+   ============================= */
+
+.flash {
+  animation: flash 0.6s ease;
+}
+
+@keyframes flash {
+  0%   { box-shadow: 0 0 0 0 var(--accent-glow); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+/* =============================
+   Chart
+   ============================= */
+
+.chart-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-style: italic;
+}
 
 canvas {
-  margin-top: 10px;
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+/* =============================
+   Screener grid (reutilizable)
+   ============================= */
+
+.screener-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* =============================
+   Responsive
+   ============================= */
+
+@media (max-width: 768px) {
+  .selectors-row {
+    flex-direction: column;
+  }
+
+  .kpis-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .status-bar {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+}
+
+/* =============================
+   Print
+   ============================= */
+
+@media print {
+  body { background: white; color: black; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+  .status-bar, .selectors-row { display: none; }
+}
+
+/* =============================
+   Performance
+   ============================= */
+
+@media (prefers-reduced-motion: no-preference) {
+  .card,
+  .kpi {
+    will-change: transform;
+  }
 }
