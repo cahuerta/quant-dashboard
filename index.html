@@ -5,137 +5,188 @@
   <title>Quant Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Estilos -->
-  <link rel="stylesheet" href="styles.css">
-
-  <!-- Charts -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Estilos base mínimos -->
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      background: #f8fafc;
+      color: #020617;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: #020617;
+    }
+
+    nav button {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 15px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    nav button.active {
+      background: #0f172a;
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+
+    section {
+      padding: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+
+    #chart {
+      width: 100%;
+      height: 400px;
+    }
+
+    .status-bar {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    /* 🔑 Tabs ocultos por defecto */
+    [data-tab-content] {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
-<div class="container">
 
-  <!-- HEADER -->
-  <h1>📈 Quant Dashboard</h1>
-  <p class="subtitle">
-    Screener → Señales → Evaluación → Decisión
-  </p>
+  <!-- =========================
+       NAV / TABS
+       ========================= -->
+  <nav>
+    <button data-tab-btn="universe">🌍 Universe</button>
+    <button data-tab-btn="analysis">📊 Analysis</button>
+    <button data-tab-btn="signals">🚨 Signals</button>
+  </nav>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <button data-tab="universe">🌍 Universo</button>
-    <button data-tab="analysis" class="active">📊 Análisis</button>
-    <button data-tab="signals">🚨 Señales</button>
-  </div>
+  <!-- =========================
+       UNIVERSE
+       ========================= -->
+  <section data-tab-content="universe">
+    <h2>🌍 Universo del sistema</h2>
 
-  <!-- STATUS BAR -->
-  <div class="status-bar">
-    <span id="status">Inicializando…</span>
-    <span id="last-update">–</span>
-  </div>
+    <div id="universe-status" class="status-bar">
+      Cargando universo…
+    </div>
 
-  <!-- ================================================= -->
-  <!-- 🌍 UNIVERSO -->
-  <!-- ================================================= -->
-  <section id="universe-tab" style="display:none">
-    <div class="card">
-      <h3>🌍 Universo de activos monitoreados</h3>
+    <table id="universe-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Calidad</th>
+          <th>Confianza</th>
+          <th>Retorno</th>
+          <th>Fundamental</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5">Cargando datos…</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
 
-      <table id="universe-table">
-        <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Calidad</th>
-            <th>Conf</th>
-            <th>Ret %</th>
-            <th>Hit Rate</th>
-            <th>Fundamental</th>
-            <th>Recomendación</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Rellenado por universe.js -->
-        </tbody>
-      </table>
+  <!-- =========================
+       ANALYSIS
+       ========================= -->
+  <section data-tab-content="analysis">
+    <h2>📊 Análisis matemático</h2>
+
+    <div class="status-bar">
+      Activo: <strong id="ticker-name">—</strong> |
+      Fecha: <span id="date-pred">—</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0">
+      <div><strong>Recomendación</strong><div id="rec">—</div></div>
+      <div><strong>Precio actual</strong><div id="pnow">—</div></div>
+      <div><strong>Precio proyectado</strong><div id="ppred">—</div></div>
+      <div><strong>Retorno</strong><div id="ret">—</div></div>
+      <div><strong>Confianza</strong><div id="conf">—</div></div>
+      <div><strong>Calidad</strong><div id="quality">—</div></div>
+    </div>
+
+    <div id="chart-info" class="status-bar">—</div>
+    <canvas id="chart"></canvas>
+
+    <div class="status-bar">
+      <span id="status">—</span> |
+      <span id="last-update">—</span>
     </div>
   </section>
 
-  <!-- ================================================= -->
-  <!-- 📊 ANÁLISIS -->
-  <!-- ================================================= -->
-  <section id="analysis-tab">
-    <div class="card">
-      <label>🎯 Activo</label>
-      <select id="ticker"></select>
+  <!-- =========================
+       SIGNALS
+       ========================= -->
+  <section data-tab-content="signals">
+    <h2>🚨 Señales detectadas</h2>
+
+    <div id="signals-status" class="status-bar">
+      Cargando señales…
     </div>
 
-    <div class="card">
-      <h3>⚙️ Señal Técnica</h3>
-      <div class="kpis-grid">
-        <div class="kpi">
-          <span>Recomendación</span>
-          <strong id="rec">–</strong>
-        </div>
-        <div class="kpi">
-          <span>Precio actual</span>
-          <strong id="pnow">–</strong>
-        </div>
-        <div class="kpi">
-          <span>Precio proyectado</span>
-          <strong id="ppred">–</strong>
-        </div>
-        <div class="kpi">
-          <span>Retorno</span>
-          <strong id="ret">–</strong>
-        </div>
-        <div class="kpi">
-          <span>Confianza</span>
-          <strong id="conf">–</strong>
-        </div>
-        <div class="kpi">
-          <span>Calidad</span>
-          <strong id="quality">–</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="card chart-card">
-      <p id="chart-info">–</p>
-      <canvas id="chart"></canvas>
-    </div>
+    <table id="signals-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Calidad</th>
+          <th>Confianza</th>
+          <th>Recomendación</th>
+          <th>Retorno</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5">Cargando señales…</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ================================================= -->
-  <!-- 🚨 SEÑALES -->
-  <!-- ================================================= -->
-  <section id="signals-tab" style="display:none">
-    <div class="card">
-      <h3>🚨 Señales activas</h3>
-
-      <table id="signals-table">
-        <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Calidad</th>
-            <th>Confianza</th>
-            <th>Recomendación</th>
-            <th>Retorno</th>
-            <th>Fundamental</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Rellenado por signals.js -->
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-</div>
-
-<!-- ================================================= -->
-<!-- ENTRY POINT FRONTEND -->
-<!-- ================================================= -->
-<script type="module" src="js/tabs.js"></script>
+  <!-- =========================
+       ENTRY POINT
+       ========================= -->
+  <script type="module">
+    import "./js/tabs.js";
+    import "./js/universe.js";
+    import "./js/signals.js";
+    import "./js/analysis.js";
+  </script>
 
 </body>
 </html>
