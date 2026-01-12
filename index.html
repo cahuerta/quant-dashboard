@@ -5,29 +5,64 @@
   <title>Quant Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- Estilos -->
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 <div class="container">
 
+  <!-- HEADER -->
   <h1>📈 Quant Dashboard</h1>
-  <p class="subtitle">Modelo técnico + evaluación + señales</p>
+  <p class="subtitle">
+    Screener → Señales → Evaluación → Decisión
+  </p>
 
-  <!-- Tabs -->
+  <!-- TABS -->
   <div class="tabs">
-    <button data-tab="analysis">📊 Análisis</button>
+    <button data-tab="universe">🌍 Universo</button>
+    <button data-tab="analysis" class="active">📊 Análisis</button>
     <button data-tab="signals">🚨 Señales</button>
   </div>
 
-  <!-- STATUS -->
+  <!-- STATUS BAR -->
   <div class="status-bar">
-    <span id="status">Cargando…</span>
+    <span id="status">Inicializando…</span>
     <span id="last-update">–</span>
   </div>
 
-  <!-- ANALYSIS -->
+  <!-- ================================================= -->
+  <!-- 🌍 UNIVERSO -->
+  <!-- ================================================= -->
+  <section id="universe-tab" style="display:none">
+    <div class="card">
+      <h3>🌍 Universo de activos monitoreados</h3>
+
+      <table id="universe-table">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Calidad</th>
+            <th>Conf</th>
+            <th>Ret %</th>
+            <th>Hit Rate</th>
+            <th>Fundamental</th>
+            <th>Recomendación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rellenado por universe.js -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================= -->
+  <!-- 📊 ANÁLISIS -->
+  <!-- ================================================= -->
   <section id="analysis-tab">
     <div class="card">
       <label>🎯 Activo</label>
@@ -37,12 +72,30 @@
     <div class="card">
       <h3>⚙️ Señal Técnica</h3>
       <div class="kpis-grid">
-        <div class="kpi"><span>Recomendación</span><strong id="rec">–</strong></div>
-        <div class="kpi"><span>Precio actual</span><strong id="pnow">–</strong></div>
-        <div class="kpi"><span>Precio proyectado</span><strong id="ppred">–</strong></div>
-        <div class="kpi"><span>Retorno</span><strong id="ret">–</strong></div>
-        <div class="kpi"><span>Confianza</span><strong id="conf">–</strong></div>
-        <div class="kpi"><span>Calidad</span><strong id="quality">–</strong></div>
+        <div class="kpi">
+          <span>Recomendación</span>
+          <strong id="rec">–</strong>
+        </div>
+        <div class="kpi">
+          <span>Precio actual</span>
+          <strong id="pnow">–</strong>
+        </div>
+        <div class="kpi">
+          <span>Precio proyectado</span>
+          <strong id="ppred">–</strong>
+        </div>
+        <div class="kpi">
+          <span>Retorno</span>
+          <strong id="ret">–</strong>
+        </div>
+        <div class="kpi">
+          <span>Confianza</span>
+          <strong id="conf">–</strong>
+        </div>
+        <div class="kpi">
+          <span>Calidad</span>
+          <strong id="quality">–</strong>
+        </div>
       </div>
     </div>
 
@@ -52,10 +105,13 @@
     </div>
   </section>
 
-  <!-- SIGNALS -->
+  <!-- ================================================= -->
+  <!-- 🚨 SEÑALES -->
+  <!-- ================================================= -->
   <section id="signals-tab" style="display:none">
     <div class="card">
-      <h3>🚨 Señales detectadas</h3>
+      <h3>🚨 Señales activas</h3>
+
       <table id="signals-table">
         <thead>
           <tr>
@@ -64,16 +120,21 @@
             <th>Confianza</th>
             <th>Recomendación</th>
             <th>Retorno</th>
+            <th>Fundamental</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+          <!-- Rellenado por signals.js -->
+        </tbody>
       </table>
     </div>
   </section>
 
 </div>
 
-<!-- ✅ ÚNICO ENTRY POINT -->
+<!-- ================================================= -->
+<!-- ENTRY POINT FRONTEND -->
+<!-- ================================================= -->
 <script type="module" src="js/tabs.js"></script>
 
 </body>
