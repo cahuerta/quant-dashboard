@@ -1,250 +1,169 @@
-// js/tabs.js — Quant Dashboard FINAL
-// Universo (assets) + Matemática (analysis) + Señales (visor desacoplado)
+// js/tabs.js
+// =======================================
+// 🧭 TABS ORCHESTRATOR (PRODUCTION READY)
+// - Controla vistas (Universe / Analysis / Signals)
+// - Inicializa módulos UNA sola vez
+// - Persistencia de tab activo (UX)
+// - Deep-link ?ticker=
+// - NO lógica de negocio | NO APIs
+// =======================================
 
-const API = "https://spy-2w-price-prediction.onrender.com";
+import { initUniverse } from "./universe.js";
+import { loadAnalysis } from "./analysis.js";
+import { initSignals } from "./signals.js";
 
-class QuantDashboard {
-  constructor() {
-    this.assets = [];        // UNIVERSO (tickers.json)
-    this.signalsCache = [];  // SEÑALES (solo visor)
-    this.currentTicker = null;
-    this.chart = null;
-    this.init();
-  }
+// ---------------------------
+// Estado interno
+// ---------------------------
+let currentTab = null;
 
-  /* =====================
-     INIT
-     ===================== */
-  async init() {
-    try {
-      this.updateStatus("🔄 Iniciando...", "–");
+let initialized = {
+  universe: false,
+  analysis: false,
+  signals: false
+};
 
-      await this.loadAssets();        // universo
-      await this.loadSignalsCache();  // visor señales
+// Tabs válidos (contrato explícito)
+const VALID_TABS = ["universe", "analysis", "signals"];
+const STORAGE_KEY = "quant_active_tab";
 
-      this.setupTickerSelect();
-      this.setupTabs();
-
-      if (this.assets.length > 0) {
-        this.currentTicker = this.assets[0].ticker;
-        document.getElementById("ticker").value = this.currentTicker;
-        await this.loadAnalysis(this.currentTicker);
-      }
-
-      this.updateStatus(
-        `✅ ${this.assets.length} activos`,
-        new Date().toLocaleString("es-CL")
-      );
-    } catch (err) {
-      console.error("Error inicial:", err);
-      this.updateStatus("❌ Error de conexión", new Date().toLocaleString("es-CL"));
-    }
-  }
-
-  /* =====================
-     API
-     ===================== */
-  async apiGet(url) {
-    const r = await fetch(API + url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-  }
-
-  /* =====================
-     DATA
-     ===================== */
-  async loadAssets() {
-    const d = await this.apiGet("/assets");
-    this.assets = Array.isArray(d.assets) ? d.assets : [];
-  }
-
-  async loadSignalsCache() {
-    const d = await this.apiGet("/signals?min_confidence=0");
-    this.signalsCache = Array.isArray(d.signals) ? d.signals : [];
-  }
-
-  /* =====================
-     HELPERS
-     ===================== */
-  formatReturn(r) {
-    const n = Number(r);
-    return isNaN(n) ? "–" : `${n.toFixed(1)}%`;
-  }
-
-  formatConfidence(c) {
-    if (c == null) return "–";
-    return c <= 1 ? `${(c * 100).toFixed(0)}%` : `${Number(c).toFixed(0)}%`;
-  }
-
-  /* =====================
-     UI SETUP
-     ===================== */
-  setupTickerSelect() {
-    const select = document.getElementById("ticker");
-    select.innerHTML = "";
-
-    this.assets.forEach(a => {
-      const opt = document.createElement("option");
-      opt.value = a.ticker;
-      opt.textContent = a.ticker;
-      select.appendChild(opt);
-    });
-
-    select.addEventListener("change", e => {
-      this.currentTicker = e.target.value;
-      this.loadAnalysis(this.currentTicker);
-    });
-  }
-
-  setupTabs() {
-    document.querySelectorAll(".tabs button").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this.switchTab(btn.dataset.tab);
-      });
-    });
-    this.switchTab("analysis");
-  }
-
-  switchTab(tab) {
-    document.getElementById("analysis-tab").style.display =
-      tab === "analysis" ? "block" : "none";
-    document.getElementById("signals-tab").style.display =
-      tab === "signals" ? "block" : "none";
-
-    document.querySelectorAll(".tabs button").forEach(btn =>
-      btn.classList.toggle("active", btn.dataset.tab === tab)
+// ---------------------------
+// Switch visual de tabs
+// ---------------------------
+export function switchTab(tabName) {
+  if (!VALID_TABS.includes(tabName)) {
+    console.warn(
+      `❌ Tab inválido ignorado: "${tabName}". Válidos: ${VALID_TABS.join(", ")}`
     );
-
-    if (tab === "signals") this.loadSignalsTable();
+    return;
   }
 
-  /* =====================
-     ANALYSIS (MATEMÁTICA PURA)
-     ===================== */
-  async loadAnalysis(ticker) {
-    try {
-      this.updateStatus(`Analizando ${ticker}…`, "–");
+  if (tabName === currentTab) return;
 
-      const pred = await this.apiGet(
-        `/dashboard/predictions/summary?ticker=${ticker}`
-      );
+  currentTab = tabName;
+  localStorage.setItem(STORAGE_KEY, tabName);
 
-      const data = pred.data || [];
-      if (data.length === 0) {
-        this.updateStatus(`❌ Sin datos ${ticker}`, "–");
-        return;
+  // Ocultar todas las secciones
+  document.querySelectorAll("[data-tab-content]").forEach(section => {
+    section.style.display = "none";
+  });
+
+  // Mostrar sección activa
+  const activeSection = document.querySelector(
+    `[data-tab-content="${tabName}"]`
+  );
+
+  if (activeSection) {
+    activeSection.style.display = "block";
+  } else {
+    console.warn(
+      `⚠️ Sección no encontrada: [data-tab-content="${tabName}"]`
+    );
+  }
+
+  // Estado visual botones
+  document.querySelectorAll("[data-tab-btn]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tabBtn === tabName);
+  });
+
+  // Inicialización perezosa
+  initTab(tabName);
+}
+
+// ---------------------------
+// Inicialización perezosa
+// ---------------------------
+function initTab(tabName) {
+  switch (tabName) {
+    case "universe":
+      if (!initialized.universe) {
+        console.log("🌍 Inicializando Universe…");
+        initUniverse();
+        initialized.universe = true;
       }
+      break;
 
-      const last = data[data.length - 1];
-
-      // ✅ RECOMENDACIÓN REAL DEL MODELO
-      document.getElementById("rec").textContent =
-        last.recommendation || "MANTÉN";
-
-      // ❌ Confianza / calidad NO aplican aquí (son de signals)
-      document.getElementById("conf").textContent = "—";
-      document.getElementById("quality").textContent = "—";
-
-      // ✅ Matemática
-      document.getElementById("pnow").textContent =
-        last.price_now != null
-          ? `$${Number(last.price_now).toLocaleString()}`
-          : "–";
-
-      document.getElementById("ppred").textContent =
-        last.price_pred != null
-          ? `$${Number(last.price_pred).toLocaleString()}`
-          : "–";
-
-      document.getElementById("ret").textContent =
-        last.ret_ens_pct != null
-          ? this.formatReturn(last.ret_ens_pct)
-          : "–";
-
-      document.getElementById("chart-info").textContent =
-        `Modelo matemático – ${ticker}`;
-
-      await this.renderChart(data);
-
-      this.updateStatus(`✅ ${ticker} listo`, new Date().toLocaleString("es-CL"));
-    } catch (err) {
-      console.error(`Error ${ticker}:`, err);
-      this.updateStatus(`❌ Error ${ticker}`, new Date().toLocaleString("es-CL"));
-    }
-  }
-
-  async renderChart(data) {
-    const labels = data.map(d => d.date_base);
-    const projected = data.map(d => d.price_pred);
-
-    if (this.chart) this.chart.destroy();
-
-    const ctx = document.getElementById("chart").getContext("2d");
-    this.chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "Precio proyectado",
-          data: projected,
-          borderColor: "#38bdf8",
-          backgroundColor: "rgba(56,189,248,.12)",
-          borderWidth: 3,
-          tension: 0.35,
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
+    case "analysis":
+      // Analysis es on-demand (loadAnalysis)
+      if (!initialized.analysis) {
+        initialized.analysis = true;
       }
-    });
-  }
+      break;
 
-  /* =====================
-     SIGNALS (VISOR)
-     ===================== */
-  loadSignalsTable() {
-    const tbody = document.querySelector("#signals-table tbody");
-    tbody.innerHTML = "";
-
-    [...this.signalsCache]
-      .sort((a, b) => (b.ret_ens_pct ?? 0) - (a.ret_ens_pct ?? 0))
-      .forEach(s => {
-        const ret = Number(s.ret_ens_pct);
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><strong>${s.ticker}</strong></td>
-          <td>${s.quality || "–"}</td>
-          <td>${this.formatConfidence(s.confidence)}</td>
-          <td>${s.recommendation || "–"}</td>
-          <td style="font-weight:600;color:${ret >= 0 ? "#10b981" : "#ef4444"}">
-            ${this.formatReturn(ret)}
-          </td>
-        `;
-        tr.onclick = () => {
-          document.getElementById("ticker").value = s.ticker;
-          this.currentTicker = s.ticker;
-          this.switchTab("analysis");
-          this.loadAnalysis(s.ticker);
-        };
-        tbody.appendChild(tr);
-      });
-  }
-
-  /* =====================
-     STATUS
-     ===================== */
-  updateStatus(msg, ts = "–") {
-    document.getElementById("status").textContent = msg;
-    document.getElementById("last-update").textContent = ts;
+    case "signals":
+      if (!initialized.signals) {
+        console.log("🚨 Inicializando Signals…");
+        initSignals();
+        initialized.signals = true;
+      }
+      break;
   }
 }
 
-/* =====================
-   BOOT
-   ===================== */
+// ---------------------------
+// Setup botones tabs
+// ---------------------------
+function setupTabButtons() {
+  document.querySelectorAll("[data-tab-btn]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      switchTab(btn.dataset.tabBtn);
+    });
+  });
+}
+
+// ---------------------------
+// Bootstrap principal
+// ---------------------------
 document.addEventListener("DOMContentLoaded", () => {
-  new QuantDashboard();
+  console.log("🧭 Tabs inicializando…");
+
+  setupTabButtons();
+
+  // Tab inicial (persistido o Universe)
+  const savedTab = localStorage.getItem(STORAGE_KEY);
+  const initialTab =
+    savedTab && VALID_TABS.includes(savedTab) ? savedTab : "universe";
+
+  switchTab(initialTab);
+
+  // Deep-link: ?ticker=KO → Analysis directo
+  const params = new URLSearchParams(window.location.search);
+  const tickerParam = params.get("ticker");
+
+  if (tickerParam) {
+    setTimeout(() => {
+      console.log(`🎯 Deep link → analysis (${tickerParam})`);
+      switchTab("analysis");
+      loadAnalysis(tickerParam);
+    }, 300);
+  }
 });
+
+// ---------------------------
+// API pública mínima
+// ---------------------------
+export function getCurrentTab() {
+  return currentTab;
+}
+
+export function isTabInitialized(tabName) {
+  return Boolean(initialized[tabName]);
+}
+
+// ---------------------------
+// Reset (útil para hot-reload dev)
+// ---------------------------
+export function resetTabs() {
+  currentTab = null;
+  Object.keys(initialized).forEach(k => (initialized[k] = false));
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// Export default limpio
+export default {
+  switchTab,
+  getCurrentTab,
+  isTabInitialized,
+  resetTabs
+};
