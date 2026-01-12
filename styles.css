@@ -1,5 +1,5 @@
 /* =====================================================
-   Dashboard Completo - Optimizado 2026 (FINAL)
+   Dashboard Completo - Optimizado 2026 (FINAL + EXTENDED)
    ===================================================== */
 
 /* =============================
@@ -170,16 +170,6 @@ select {
   font-size: 1.6rem;
 }
 
-/* === Fallback Firefox / universal === */
-.kpi.buy    { border-left: 4px solid var(--success); }
-.kpi.sell   { border-left: 4px solid var(--danger); }
-.kpi.hold   { border-left: 4px solid var(--warning); }
-
-/* === Progressive enhancement (Chrome/Safari) === */
-.kpi:has(strong[data-rec="COMPRA"]) { border-left: 4px solid var(--success); }
-.kpi:has(strong[data-rec="VENTA"])  { border-left: 4px solid var(--danger); }
-.kpi:has(strong[data-rec="ESPERA"]) { border-left: 4px solid var(--warning); }
-
 /* =============================
    Badges
    ============================= */
@@ -188,8 +178,10 @@ select {
   border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 600;
+  display: inline-block;
 }
 
+/* Signal quality */
 .badge[data-quality="STRONG"] {
   color: var(--success);
   background: rgba(22,163,74,.15);
@@ -205,6 +197,24 @@ select {
 .badge[data-quality="NOISE"] {
   color: var(--danger);
   background: rgba(220,38,38,.15);
+}
+
+/* =============================
+   Fundamental Flags (NEW)
+   ============================= */
+.badge[data-fundamental="DEEP_VALUE"] {
+  color: var(--success);
+  background: rgba(34,197,94,.15);
+}
+
+.badge[data-fundamental="VALUE"] {
+  color: var(--info);
+  background: rgba(96,165,250,.15);
+}
+
+.badge[data-fundamental="OVERHEATED"] {
+  color: var(--danger);
+  background: rgba(248,113,113,.15);
 }
 
 /* =============================
@@ -230,50 +240,66 @@ canvas {
 /* =============================
    Signals Table
    ============================= */
-#signals-table {
+#signals-table,
+#universe-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-#signals-table thead th {
+#signals-table thead th,
+#universe-table thead th {
   padding: 14px;
-  background: rgba(30,41,59,.8);
+  background: rgba(30,41,59,.85);
   font-size: 12px;
   text-transform: uppercase;
 }
 
-#signals-table td {
+#signals-table td,
+#universe-table td {
   padding: 14px;
+  border-bottom: 1px solid var(--border-light);
 }
 
 @media (hover: hover) {
-  #signals-table tbody tr:hover {
+  #signals-table tbody tr:hover,
+  #universe-table tbody tr:hover {
     background: rgba(56,189,248,.1);
     transform: translateX(4px);
+    cursor: pointer;
   }
 }
 
 /* =============================
-   Responsive table
+   Universe Status
+   ============================= */
+#universe-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* =============================
+   Responsive tables
    ============================= */
 @media (max-width: 768px) {
-  #signals-table thead { display: none; }
-  #signals-table tbody tr {
+  #signals-table thead,
+  #universe-table thead {
+    display: none;
+  }
+
+  #signals-table tbody tr,
+  #universe-table tbody tr {
     display: block;
     margin-bottom: 12px;
     border-radius: var(--radius-sm);
     background: var(--glass-kpi);
     padding: 12px;
   }
-  #signals-table td {
+
+  #signals-table td,
+  #universe-table td {
     display: block;
     padding: 6px 0;
-  }
-  #signals-table td::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 12px;
-    color: var(--text-secondary);
   }
 }
 
