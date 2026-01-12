@@ -1,98 +1,281 @@
 // js/analysis.js
+// =======================================
+// 📊 ANÁLISIS MATEMÁTICO PURO (v2.1 FINAL)
+// - SOLO predictions (histórico calculado)
+// - NO señales | NO confianza | NO decisiones
+// - Determinístico + reproducible
+// - Chart con líneas de referencia
+// =======================================
 
-import { apiGet } from "./api.js";
+const API = "https://spy-2w-price-prediction.onrender.com";
 
-// =====================
-// STATE
-// =====================
-let chart = null;
-let SIGNAL_CACHE = null;
+let chartInstance = null;
+let currentTicker = null;
 
-// =====================
-// HELPERS DOM
-// =====================
-const el = id => document.getElementById(id);
+// ---------------------------
+// API helper (defensivo)
+// ---------------------------
+async function apiGet(url, params = {}) {
+  const urlParams = new URLSearchParams(params);
+  const fullUrl = `${API}${url}${urlParams.toString() ? `?${urlParams}` : ""}`;
 
-// =====================
-// DATA
-// =====================
-async function getSignals() {
-  if (!SIGNAL_CACHE) {
-    SIGNAL_CACHE = await apiGet("/signals?min_confidence=0");
+  try {
+    const res = await fetch(fullUrl, {
+      cache: "no-cache",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(`❌ API error: ${url}`, err);
+    return null;
   }
-  return SIGNAL_CACHE;
 }
 
-// =====================
-// INIT (llamado desde tabs.js)
-// =====================
-export async function initAnalysis() {
-  const sel = el("ticker");
+// ---------------------------
+// Formatters
+// ---------------------------
+function formatMoney(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return `$${n.toLocaleString("es-CL")}`;
+}
 
-  if (!sel) {
-    console.error("❌ #ticker no existe");
-    return;
+function formatReturn(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  const color = n >= 0 ? "#10b981" : "#ef4444";
+  return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
+}
+
+function formatDate(v) {
+  if (v == null) return "—";
+  try {
+    return new Date(v).toLocaleDateString("es-CL");
+  } catch {
+    return "—";
+  }
+}
+
+// ---------------------------
+// Render principal
+// ---------------------------
+export async function loadAnalysis(ticker) {
+  try {
+    currentTicker = ticker;
+    updateStatus(`📊 Analizando ${ticker}…`, "–");
+
+    const res = await apiGet("/dashboard/predictions/summary", { ticker });
+
+    if (!res?.data?.length) {
+      updateStatus(`❌ Sin datos para ${ticker}`, new Date().toLocaleString("es-CL"));
+      clearAnalysis();
+      return;
+    }
+
+    const data = res.data;
+    const last = data[data.length - 1];
+
+    // KPIs MATEMÁTICOS
+    setText("ticker-name", ticker);
+    setText("rec", last.recommendation || "HOLD");
+    setText("pnow", formatMoney(last.price_now));
+    setText("ppred", formatMoney(last.price_pred));
+    setHTML("ret", formatReturn(last.ret_ens_pct));
+    setText("date-pred", formatDate(last.date_base));
+
+    // NO señales aquí
+    setText("conf", "—");
+    setText("quality", "—");
+
+    setText(
+      "chart-info",
+      `Modelo matemático • ${data.length} predicciones históricas`
+    );
+
+    renderChart(data, last);
+
+    updateStatus(
+      `✅ ${ticker} | ${data.length} predicciones`,
+      new Date().toLocaleString("es-CL")
+    );
+  } catch (err) {
+    console.error(`❌ Error análisis ${ticker}:`, err);
+    updateStatus(`❌ Error: ${ticker}`, new Date().toLocaleString("es-CL"));
+    clearAnalysis();
+  }
+}
+
+// ---------------------------
+// Chart.js con referencias
+// ---------------------------
+const referenceLinesPlugin = {
+  id: "referenceLines",
+  afterDraw(chart) {
+    const ctx = chart.ctx;
+    const yAxis = chart.scales.y;
+    const last = chart.$lastPoint;
+
+    if (!last || !yAxis) return;
+
+    // Línea precio actual
+    if (last.price_now != null) {
+      const y = yAxis.getPixelForValue(last.price_now);
+      ctx.save();
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      ctx.beginPath();
+      ctx.moveTo(yAxis.left, y);
+      ctx.lineTo(yAxis.right, y);
+      ctx.stroke();
+      ctx.fillStyle = "#10b981";
+      ctx.font = "12px SF Mono, monospace";
+      ctx.fillText(
+        `$${last.price_now.toLocaleString("es-CL")}`,
+        yAxis.right - 90,
+        y - 6
+      );
+      ctx.restore();
+    }
+
+    // Línea precio proyectado
+    if (last.price_pred != null) {
+      const y = yAxis.getPixelForValue(last.price_pred);
+      ctx.save();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(yAxis.left, y);
+      ctx.lineTo(yAxis.right, y);
+      ctx.stroke();
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "12px SF Mono, monospace";
+      ctx.fillText(
+        `$${last.price_pred.toLocaleString("es-CL")}`,
+        yAxis.right - 90,
+        y + 14
+      );
+      ctx.restore();
+    }
+  },
+};
+
+function renderChart(data, last) {
+  const labels = data.map(d => formatDate(d.date_base));
+  const projected = data.map(d => d.price_pred);
+  const actuals = data.map(d => (d.price_now ?? null));
+
+  const ctx = document.getElementById("chart")?.getContext("2d");
+  if (!ctx) return;
+
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
   }
 
-  sel.addEventListener("change", e => loadSignal(e.target.value));
-  await loadTickers();
-}
-
-// =====================
-// LOADERS
-// =====================
-async function loadTickers() {
-  const d = await getSignals();
-  const sel = el("ticker");
-
-  sel.innerHTML = `<option value="">Selecciona…</option>`;
-
-  d.signals.forEach(s => {
-    const o = document.createElement("option");
-    o.value = s.ticker;
-    o.textContent = s.ticker;
-    sel.appendChild(o);
-  });
-
-  el("status").textContent = `✅ ${d.signals.length} activos`;
-  el("last-update").textContent = new Date().toLocaleString("es-CL");
-}
-
-export async function loadSignal(ticker) {
-  if (!ticker) return;
-
-  const d = await getSignals();
-  const s = d.signals.find(x => x.ticker === ticker);
-  if (!s) return;
-
-  el("rec").textContent = s.recommendation;
-  el("pnow").textContent = `$${s.price_now}`;
-  el("ppred").textContent = `$${s.price_pred}`;
-  el("ret").textContent = `${s.ret_ens_pct}%`;
-  el("conf").textContent = s.confidence ?? "–";
-  el("quality").textContent = s.quality;
-
-  await loadChart(ticker);
-}
-
-async function loadChart(ticker) {
-  const pred = await apiGet(`/dashboard/predictions/summary?ticker=${ticker}`);
-
-  const labels = pred.data.map(x => x.date_base);
-  const projected = pred.data.map(x => x.price_pred);
-
-  if (chart) chart.destroy();
-
-  chart = new Chart(el("chart"), {
+  chartInstance = new Chart(ctx, {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: "Proyectado",
-          data: projected
-        }
-      ]
-    }
+          label: "Precio proyectado",
+          data: projected,
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56,189,248,.08)",
+          borderWidth: 3,
+          tension: 0.35,
+          fill: true,
+          pointRadius: 0,
+        },
+        {
+          label: "Precio actual",
+          data: actuals,
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16,185,129,.05)",
+          borderWidth: 2,
+          tension: 0.25,
+          fill: false,
+          pointRadius: 3,
+          borderDash: [5, 5],
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: "index" },
+      plugins: {
+        legend: { display: true, position: "top" },
+        tooltip: { mode: "index", intersect: false },
+      },
+      scales: {
+        x: { grid: { color: "rgba(0,0,0,0.05)" } },
+        y: { grid: { color: "rgba(0,0,0,0.05)" } },
+      },
+    },
+    plugins: [referenceLinesPlugin],
   });
+
+  // Guardamos último punto para el plugin
+  chartInstance.$lastPoint = last;
 }
+
+// ---------------------------
+// DOM helpers
+// ---------------------------
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ?? "—";
+}
+
+function setHTML(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = value ?? "—";
+}
+
+function clearAnalysis() {
+  [
+    "rec",
+    "pnow",
+    "ppred",
+    "ret",
+    "conf",
+    "quality",
+    "ticker-name",
+    "date-pred",
+  ].forEach(id => setText(id, "—"));
+
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+}
+
+function updateStatus(msg, ts) {
+  const s = document.getElementById("status");
+  const t = document.getElementById("last-update");
+  if (s) s.textContent = msg;
+  if (t) t.textContent = ts;
+}
+
+// ---------------------------
+// API pública
+// ---------------------------
+export function getCurrentTicker() {
+  return currentTicker;
+}
+
+export function getChartData() {
+  return chartInstance?.data || null;
+}
+
+export default {
+  loadAnalysis,
+  getCurrentTicker,
+  getChartData,
+};
