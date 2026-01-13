@@ -1,11 +1,10 @@
 // js/universe.js
 // =======================================
-// 🌍 UNIVERSO DEL SISTEMA (PRODUCTION READY)
-// - Carga paralela assets + signals
-// - Indexación O(1) signals por ticker
+// 🌍 UNIVERSO DEL SISTEMA (FINAL LIMPIO)
+// - Fuente única: /dashboard/tickers
+// - NO assets | NO signals
+// - Click → analysis
 // - Auto-refresh cada 5min
-// - Error handling robusto
-// - Click → analysis flow suave
 // =======================================
 
 import { switchTab } from "./tabs.js";
@@ -14,7 +13,6 @@ import { loadAnalysis } from "./analysis.js";
 const API = "https://spy-2w-price-prediction.onrender.com";
 
 let universe = [];
-let signalsIndex = {};
 let lastRefresh = 0;
 let degraded = false;
 
@@ -40,35 +38,6 @@ async function apiGet(url, params = {}) {
 }
 
 // ---------------------------
-// Formatters
-// ---------------------------
-function formatReturn(v) {
-  if (v == null) return "—";
-  const n = Number(v);
-  if (Number.isNaN(n)) return "—";
-  const color = n >= 0 ? "#10b981" : "#ef4444";
-  return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
-}
-
-function formatConfidence(c) {
-  if (c == null) return "—";
-  const n = Number(c);
-  if (Number.isNaN(n)) return "—";
-  return n <= 1 ? `${(n * 100).toFixed(0)}%` : `${n.toFixed(0)}%`;
-}
-
-function formatQuality(q) {
-  const icons = {
-    "🔥 STRONG": "🔥",
-    "✅ GOOD": "✅",
-    "⚠️ WEAK": "⚠️",
-    "❌ NOISE": "❌",
-    "NO_DATA": "—"
-  };
-  return icons[q] || q || "—";
-}
-
-// ---------------------------
 // Carga principal
 // ---------------------------
 export async function loadUniverse(forceRefresh = false) {
@@ -82,21 +51,14 @@ export async function loadUniverse(forceRefresh = false) {
   degraded = false;
 
   try {
-    console.log("🌍 Cargando universo…");
+    console.log("🌍 Cargando universo (dashboard/tickers)…");
 
-    const [assetsRes, signalsRes] = await Promise.all([
-      apiGet("/assets"),
-      apiGet("/signals", { min_confidence: 0 })
-    ]);
+    const res = await apiGet("/dashboard/tickers");
 
-    universe = Array.isArray(assetsRes?.assets) ? assetsRes.assets : [];
-    const signals = Array.isArray(signalsRes?.signals) ? signalsRes.signals : [];
-
-    // Indexación O(1)
-    signalsIndex = {};
-    signals.forEach(s => {
-      if (s?.ticker) signalsIndex[s.ticker] = s;
-    });
+    // Backend devuelve: { tickers: ["SPY","AAPL",...], count: N }
+    universe = Array.isArray(res?.tickers)
+      ? res.tickers.map(t => ({ ticker: t }))
+      : [];
 
     lastRefresh = now;
     renderUniverseTable();
@@ -118,16 +80,11 @@ function renderUniverseTable() {
   tbody.innerHTML = "";
 
   universe.forEach(a => {
-    const s = signalsIndex[a.ticker];
-
     const tr = document.createElement("tr");
     tr.className = "hoverable";
     tr.innerHTML = `
       <td class="ticker"><strong>${a.ticker}</strong></td>
-      <td class="quality">${formatQuality(s?.quality)}</td>
-      <td class="confidence">${formatConfidence(s?.confidence)}</td>
-      <td class="return">${formatReturn(s?.ret_ens_pct)}</td>
-      <td class="fundamental">${s?.fundamental_flag ?? "—"}</td>
+      <td class="status">OK</td>
     `;
 
     tr.onclick = e => {
@@ -155,17 +112,8 @@ function updateUniverseStatus() {
     return;
   }
 
-  const total = universe.length;
-  const withSignal = Object.keys(signalsIndex).length;
-  const strongSignals = Object.values(signalsIndex)
-    .filter(s => Number(s?.confidence) >= 0.7).length;
-
   el.style.color = "";
-  el.innerHTML = `
-    🌍 Universo: <strong>${total}</strong> |
-    Señales: <strong>${withSignal}</strong> |
-    <span style="color:#10b981">Fuertes: ${strongSignals}</span>
-  `;
+  el.innerHTML = `🌍 Universo: <strong>${universe.length}</strong>`;
 }
 
 // ---------------------------
@@ -175,16 +123,9 @@ export function getUniverse() {
   return universe;
 }
 
-export function getSignal(ticker) {
-  return signalsIndex[ticker];
-}
-
 export function getStatus() {
   return {
     total: universe.length,
-    withSignal: Object.keys(signalsIndex).length,
-    strongSignals: Object.values(signalsIndex)
-      .filter(s => Number(s?.confidence) >= 0.7).length,
     lastRefresh: new Date(lastRefresh).toLocaleTimeString(),
     degraded
   };
@@ -221,6 +162,10 @@ style.textContent = `
   .ticker {
     font-family: "SF Mono", monospace;
   }
+  .status {
+    color: #10b981;
+    font-weight: 600;
+  }
 `;
 document.head.appendChild(style);
 
@@ -229,6 +174,5 @@ export default {
   initUniverse,
   loadUniverse,
   getUniverse,
-  getSignal,
   getStatus
 };
