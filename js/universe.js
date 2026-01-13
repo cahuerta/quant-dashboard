@@ -1,10 +1,11 @@
 // js/universe.js
 // =======================================
-// 🌍 UNIVERSO DEL SISTEMA (FINAL LIMPIO)
-// - Fuente única: /dashboard/tickers
-// - NO assets | NO signals
-// - Click → analysis
-// - Auto-refresh cada 5min
+// 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
+// - Fuente: /dashboard (main.py)
+// - NO usa /assets
+// - NO usa /signals
+// - Snapshot por ticker desde disco
+// - Click → analysis limpio
 // =======================================
 
 import { switchTab } from "./tabs.js";
@@ -17,14 +18,11 @@ let lastRefresh = 0;
 let degraded = false;
 
 // ---------------------------
-// API helper (defensivo)
+// API helper
 // ---------------------------
-async function apiGet(url, params = {}) {
-  const urlParams = new URLSearchParams(params);
-  const fullUrl = `${API}${url}${urlParams.toString() ? `?${urlParams}` : ""}`;
-
+async function apiGet(url) {
   try {
-    const res = await fetch(fullUrl, {
+    const res = await fetch(`${API}${url}`, {
       cache: "no-cache",
       headers: { Accept: "application/json" }
     });
@@ -38,27 +36,71 @@ async function apiGet(url, params = {}) {
 }
 
 // ---------------------------
+// Formatters
+// ---------------------------
+function formatReturn(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  const color = n >= 0 ? "#10b981" : "#ef4444";
+  return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
+}
+
+function formatQuality(rec) {
+  const map = {
+    BUY: "🔥",
+    HOLD: "⚠️",
+    SELL: "❌"
+  };
+  return map[rec] || "—";
+}
+
+function formatConfidence(ret) {
+  if (ret == null) return "—";
+  const n = Math.min(Math.abs(ret) / 5, 1); // heurística simple
+  return `${Math.round(n * 100)}%`;
+}
+
+// ---------------------------
 // Carga principal
 // ---------------------------
-export async function loadUniverse(forceRefresh = false) {
+export async function loadUniverse(force = false) {
   const now = Date.now();
-
-  if (!forceRefresh && now - lastRefresh < 5 * 60 * 1000) {
+  if (!force && now - lastRefresh < 5 * 60 * 1000) {
     renderUniverseTable();
     return;
   }
 
   degraded = false;
+  universe = [];
 
   try {
-    console.log("🌍 Cargando universo (dashboard/tickers)…");
+    console.log("🌍 Cargando universo…");
 
-    const res = await apiGet("/dashboard/tickers");
-
-    // Backend devuelve: { tickers: ["SPY","AAPL",...], count: N }
-    universe = Array.isArray(res?.tickers)
-      ? res.tickers.map(t => ({ ticker: t }))
+    // 1️⃣ Obtener tickers
+    const tickersRes = await apiGet("/dashboard/tickers");
+    const tickers = Array.isArray(tickersRes?.tickers)
+      ? tickersRes.tickers
       : [];
+
+    // 2️⃣ Snapshot por ticker (paralelo)
+    const snapshots = await Promise.all(
+      tickers.map(t =>
+        apiGet(`/dashboard/latest/${t}`)
+          .then(r => ({
+            ticker: t,
+            data: r?.latest?.prediction || null
+          }))
+      )
+    );
+
+    universe = snapshots
+      .filter(x => x.data)
+      .map(x => ({
+        ticker: x.ticker,
+        ret: x.data.ret_ens_pct,
+        recommendation: x.data.recommendation
+      }));
 
     lastRefresh = now;
     renderUniverseTable();
@@ -79,18 +121,21 @@ function renderUniverseTable() {
 
   tbody.innerHTML = "";
 
-  universe.forEach(a => {
+  universe.forEach(u => {
     const tr = document.createElement("tr");
     tr.className = "hoverable";
     tr.innerHTML = `
-      <td class="ticker"><strong>${a.ticker}</strong></td>
-      <td class="status">OK</td>
+      <td class="ticker"><strong>${u.ticker}</strong></td>
+      <td class="quality">${formatQuality(u.recommendation)}</td>
+      <td class="confidence">${formatConfidence(u.ret)}</td>
+      <td class="return">${formatReturn(u.ret)}</td>
+      <td class="fundamental">—</td>
     `;
 
     tr.onclick = e => {
       e.preventDefault();
       switchTab("analysis");
-      loadAnalysis(a.ticker);
+      loadAnalysis(u.ticker);
     };
 
     tbody.appendChild(tr);
@@ -107,7 +152,7 @@ function updateUniverseStatus() {
   if (!el) return;
 
   if (degraded) {
-    el.innerHTML = "⚠️ Universo no disponible (API)";
+    el.textContent = "⚠️ Universo no disponible (API)";
     el.style.color = "#f59e0b";
     return;
   }
@@ -117,62 +162,29 @@ function updateUniverseStatus() {
 }
 
 // ---------------------------
-// API pública
-// ---------------------------
-export function getUniverse() {
-  return universe;
-}
-
-export function getStatus() {
-  return {
-    total: universe.length,
-    lastRefresh: new Date(lastRefresh).toLocaleTimeString(),
-    degraded
-  };
-}
-
-// ---------------------------
-// Auto-refresh background
-// ---------------------------
-let refreshInterval;
-function startAutoRefresh() {
-  if (refreshInterval) return;
-  refreshInterval = setInterval(() => loadUniverse(true), 5 * 60 * 1000);
-}
-
-// ---------------------------
 // Init
 // ---------------------------
 export function initUniverse() {
-  startAutoRefresh();
   loadUniverse(true);
+  setInterval(() => loadUniverse(true), 5 * 60 * 1000);
 }
 
 // ---------------------------
-// Estilos (ideal mover a CSS)
+// Estilos mínimos
 // ---------------------------
 const style = document.createElement("style");
 style.textContent = `
   .hoverable:hover {
     background: #f3f4f6 !important;
     cursor: pointer;
-    transform: scale(1.01);
-    transition: all 0.15s ease;
   }
   .ticker {
     font-family: "SF Mono", monospace;
   }
-  .status {
-    color: #10b981;
-    font-weight: 600;
-  }
 `;
 document.head.appendChild(style);
 
-// Export default
 export default {
   initUniverse,
-  loadUniverse,
-  getUniverse,
-  getStatus
+  loadUniverse
 };
