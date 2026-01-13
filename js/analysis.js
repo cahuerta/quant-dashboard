@@ -63,22 +63,26 @@ function formatDate(v) {
 // Render principal
 // ---------------------------
 export async function loadAnalysis(ticker) {
+  if (!ticker) return;
+
   try {
     currentTicker = ticker;
-    updateStatus(`📊 Analizando ${ticker}…`, "–");
+    updateStatus(`📊 Analizando ${ticker}…`, "—");
+
+    clearAnalysis(false); // limpia KPIs pero no destruye chart aún
 
     const res = await apiGet("/dashboard/predictions/summary", { ticker });
 
     if (!res?.data?.length) {
       updateStatus(`❌ Sin datos para ${ticker}`, new Date().toLocaleString("es-CL"));
-      clearAnalysis();
+      clearAnalysis(true);
       return;
     }
 
     const data = res.data;
     const last = data[data.length - 1];
 
-    // KPIs MATEMÁTICOS
+    // KPIs MATEMÁTICOS (solo predictions)
     setText("ticker-name", ticker);
     setText("rec", last.recommendation || "HOLD");
     setText("pnow", formatMoney(last.price_now));
@@ -86,7 +90,7 @@ export async function loadAnalysis(ticker) {
     setHTML("ret", formatReturn(last.ret_ens_pct));
     setText("date-pred", formatDate(last.date_base));
 
-    // NO señales aquí
+    // NO señales aquí (se mantienen en blanco)
     setText("conf", "—");
     setText("quality", "—");
 
@@ -95,7 +99,10 @@ export async function loadAnalysis(ticker) {
       `Modelo matemático • ${data.length} predicciones históricas`
     );
 
-    renderChart(data, last);
+    // Asegura render con la pestaña visible
+    requestAnimationFrame(() => {
+      renderChart(data, last);
+    });
 
     updateStatus(
       `✅ ${ticker} | ${data.length} predicciones`,
@@ -104,7 +111,7 @@ export async function loadAnalysis(ticker) {
   } catch (err) {
     console.error(`❌ Error análisis ${ticker}:`, err);
     updateStatus(`❌ Error: ${ticker}`, new Date().toLocaleString("es-CL"));
-    clearAnalysis();
+    clearAnalysis(true);
   }
 }
 
@@ -117,7 +124,6 @@ const referenceLinesPlugin = {
     const ctx = chart.ctx;
     const yAxis = chart.scales.y;
     const last = chart.$lastPoint;
-
     if (!last || !yAxis) return;
 
     // Línea precio actual
@@ -165,11 +171,19 @@ const referenceLinesPlugin = {
 };
 
 function renderChart(data, last) {
+  // Guard: Chart.js debe existir
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js no cargado aún");
+    return;
+  }
+
   const labels = data.map(d => formatDate(d.date_base));
   const projected = data.map(d => d.price_pred);
   const actuals = data.map(d => (d.price_now ?? null));
 
-  const ctx = document.getElementById("chart")?.getContext("2d");
+  const canvas = document.getElementById("chart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   if (chartInstance) {
@@ -221,7 +235,7 @@ function renderChart(data, last) {
     plugins: [referenceLinesPlugin],
   });
 
-  // Guardamos último punto para el plugin
+  // Último punto para plugin
   chartInstance.$lastPoint = last;
 }
 
@@ -238,7 +252,7 @@ function setHTML(id, value) {
   if (el) el.innerHTML = value ?? "—";
 }
 
-function clearAnalysis() {
+function clearAnalysis(destroyChart = false) {
   [
     "rec",
     "pnow",
@@ -248,9 +262,10 @@ function clearAnalysis() {
     "quality",
     "ticker-name",
     "date-pred",
+    "chart-info",
   ].forEach(id => setText(id, "—"));
 
-  if (chartInstance) {
+  if (destroyChart && chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
   }
