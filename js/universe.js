@@ -1,22 +1,24 @@
 // js/universe.js
-// =======================================
-// 🌍 UNIVERSO DEL SISTEMA (BACKEND REAL)
-// Fuente: /dashboard/latest/{ticker}
-// Lee: latest.result (NO prediction)
-// =======================================
+// =====================================================
+// 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
+// - Fuente: /dashboard/tickers
+// - Fuente: /dashboard/latest/{ticker}
+// - Lee SOLO: latest.result
+// - Tolerante a fallos parciales
+// =====================================================
 
 import { switchTab } from "./tabs.js";
 import { loadAnalysis } from "./analysis.js";
 
-const API = "https://diction.onrender.com";
+// 🔑 Backend REAL
+const API = "https://spy-2w-price-prediction.onrender.com";
 
 let universe = [];
 let lastRefresh = 0;
-let degraded = false;
 
-// ---------------------------
-// API helper
-// ---------------------------
+// -----------------------------------------------------
+// API helper (NO marca error global)
+// -----------------------------------------------------
 async function apiGet(url) {
   try {
     const res = await fetch(`${API}${url}`, {
@@ -26,15 +28,14 @@ async function apiGet(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error(`❌ API error: ${url}`, err);
-    degraded = true;
-    return null;
+    console.warn("API warning:", url, err.message);
+    return null; // ⚠️ fallo local, NO global
   }
 }
 
-// ---------------------------
+// -----------------------------------------------------
 // Formatters
-// ---------------------------
+// -----------------------------------------------------
 function fmt(v) {
   return v == null ? "—" : v;
 }
@@ -47,9 +48,9 @@ function fmtReturn(v) {
   return `<span style="color:${color};font-weight:600">${n.toFixed(2)}%</span>`;
 }
 
-// ---------------------------
+// -----------------------------------------------------
 // Load universe
-// ---------------------------
+// -----------------------------------------------------
 export async function loadUniverse(force = false) {
   const now = Date.now();
   if (!force && now - lastRefresh < 5 * 60 * 1000) {
@@ -57,48 +58,48 @@ export async function loadUniverse(force = false) {
     return;
   }
 
-  degraded = false;
   universe = [];
 
-  try {
-    // 1) Tickers
-    const t = await apiGet("/dashboard/tickers");
-    const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
+  // 1️⃣ Obtener tickers
+  const t = await apiGet("/dashboard/tickers");
+  const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
 
-    // 2) Snapshot real por ticker
-    const snaps = await Promise.all(
-      tickers.map(async ticker => {
-        const r = await apiGet(`/dashboard/latest/${ticker}`);
-        const d = r?.latest?.result || null;
+  // 2️⃣ Obtener snapshots (tolerante)
+  const results = await Promise.allSettled(
+    tickers.map(async ticker => {
+      const r = await apiGet(`/dashboard/latest/${ticker}`);
+      const d = r?.latest?.result || null;
+      return { ticker, data: d };
+    })
+  );
 
-        return {
-          ticker,
-          data: d
-        };
-      })
-    );
+  universe = results.map((res, i) => {
+    if (res.status === "fulfilled") {
+      const d = res.value.data;
+      return {
+        ticker: res.value.ticker,
+        recommendation: d?.recommendation ?? "SIN DATOS",
+        ret: d?.ret_ens_pct ?? null
+      };
+    }
+    // fallo individual
+    return {
+      ticker: tickers[i],
+      recommendation: "SIN DATOS",
+      ret: null
+    };
+  });
 
-    universe = snaps.map(x => ({
-      ticker: x.ticker,
-      recommendation: x.data?.recommendation || "SIN DATOS",
-      ret: x.data?.ret_ens_pct ?? null
-    }));
-
-    lastRefresh = now;
-    render();
-
-  } catch (e) {
-    console.error("❌ Universe error", e);
-    degraded = true;
-    render();
-  }
+  lastRefresh = now;
+  render();
 }
 
-// ---------------------------
+// -----------------------------------------------------
 // Render
-// ---------------------------
+// -----------------------------------------------------
 function render() {
   const tbody = document.querySelector("#universe-table tbody");
+  const status = document.getElementById("universe-status");
   if (!tbody) return;
 
   tbody.innerHTML = "";
@@ -120,17 +121,14 @@ function render() {
     tbody.appendChild(tr);
   });
 
-  const s = document.getElementById("universe-status");
-  if (s) {
-    s.innerHTML = degraded
-      ? "⚠️ Error de backend"
-      : `🌍 Universo: <strong>${universe.length}</strong>`;
+  if (status) {
+    status.innerHTML = `🌍 Universo: <strong>${universe.length}</strong>`;
   }
 }
 
-// ---------------------------
+// -----------------------------------------------------
 // Init
-// ---------------------------
+// -----------------------------------------------------
 export function initUniverse() {
   loadUniverse(true);
   setInterval(() => loadUniverse(true), 5 * 60 * 1000);
