@@ -227,10 +227,10 @@ select {
 }
 
 .chart-card {
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
+  height: 200px;      
+  min-height: unset; 
 }
+
 
 canvas {
   flex: 1;
