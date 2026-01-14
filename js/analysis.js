@@ -106,7 +106,7 @@ export async function loadAnalysis(ticker) {
   // =====================================================
   // BACKEND REAL — COMPATIBILIDAD TOTAL
   // =====================================================
-  const result = latest?.latest?.result || {};
+  const result = latest?.latest?.result || latest?.latest || {};
   const pred = result?.prediction || result;
   const meta = result?.meta || pred?.meta || {};
   const hist = result?.historical || pred?.historical || {};
