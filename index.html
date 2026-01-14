@@ -43,26 +43,6 @@
       padding: 16px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
-      font-size: 14px;
-    }
-
-    th {
-      background: #f1f5f9;
-      font-weight: 600;
-    }
-
     .status-bar {
       margin: 8px 0;
       font-size: 13px;
@@ -71,6 +51,27 @@
       gap: 12px;
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 13px;
+      color: #475569;
+      margin-bottom: 4px;
     }
 
     select {
@@ -98,35 +99,6 @@
 </nav>
 
 <!-- =========================
-     UNIVERSE
-     ========================= -->
-<section data-tab-content="universe">
-  <h2>🌍 Universo del sistema</h2>
-
-  <div id="universe-status" class="status-bar">
-    Cargando universo…
-  </div>
-
-  <table id="universe-table">
-    <thead>
-      <tr>
-        <th>Ticker</th>
-        <th>Recomendación</th>
-        <th>Precio actual</th>
-        <th>Precio predictivo</th>
-        <th>Confianza</th>
-        <th>Retorno</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td colspan="6">Cargando datos…</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<!-- =========================
      ANALYSIS
      ========================= -->
 <section data-tab-content="analysis">
@@ -141,16 +113,58 @@
     <span>Fecha: <span id="date-pred">—</span></span>
   </div>
 
-  <!-- KPIs -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0">
-    <div><strong>Recomendación</strong><div id="rec">—</div></div>
-    <div><strong>Precio actual</strong><div id="pnow">—</div></div>
-    <div><strong>Precio proyectado</strong><div id="ppred">—</div></div>
-    <div><strong>Retorno</strong><div id="ret">—</div></div>
-    <div><strong>Confianza</strong><div id="conf">—</div></div>
-    <div><strong>Calidad</strong><div id="quality">—</div></div>
+  <!-- RESULTADO -->
+  <h3>Resultado del análisis</h3>
+  <div class="grid">
+    <div class="card"><strong>Recomendación</strong><div id="rec">—</div></div>
+    <div class="card"><strong>Precio actual</strong><div id="pnow">—</div></div>
+    <div class="card"><strong>Precio proyectado</strong><div id="ppred">—</div></div>
+    <div class="card"><strong>Retorno esperado</strong><div id="ret">—</div></div>
   </div>
 
+  <!-- CONFIABILIDAD -->
+  <h3>Confiabilidad del modelo</h3>
+  <div class="grid">
+    <div class="card">
+      <strong>Qué tan bien explica el mercado</strong>
+      <div id="model-explains">—</div>
+    </div>
+    <div class="card">
+      <strong>Error promedio del modelo</strong>
+      <div id="model-error-avg">—</div>
+    </div>
+    <div class="card">
+      <strong>Error típico máximo</strong>
+      <div id="model-error-max">—</div>
+    </div>
+  </div>
+
+  <!-- CÓMO SE CALCULÓ -->
+  <h3>Cómo se calculó</h3>
+  <div class="grid">
+    <div class="card">
+      <strong>Horizonte de proyección</strong>
+      <div id="horizon">—</div>
+    </div>
+    <div class="card">
+      <strong>Variables analizadas</strong>
+      <div id="features-used">—</div>
+    </div>
+    <div class="card">
+      <strong>Variables realmente relevantes</strong>
+      <div id="features-effective">—</div>
+    </div>
+    <div class="card">
+      <strong>Casos históricos comparados</strong>
+      <div id="windows-used">—</div>
+    </div>
+    <div class="card">
+      <strong>Días de información histórica</strong>
+      <div id="rows-used">—</div>
+    </div>
+  </div>
+
+  <!-- CHART -->
   <canvas id="chart" height="320"></canvas>
 
   <div class="status-bar">
@@ -158,48 +172,6 @@
     <span id="last-update">—</span>
   </div>
 </section>
-
-<!-- =========================
-     SIGNALS
-     ========================= -->
-<section data-tab-content="signals">
-  <h2>🚨 Señales detectadas</h2>
-
-  <div id="signals-status" class="status-bar">
-    Cargando señales…
-  </div>
-
-  <table id="signals-table">
-    <thead>
-      <tr>
-        <th>Ticker</th>
-        <th>Calidad</th>
-        <th>Confianza</th>
-        <th>Recomendación</th>
-        <th>Retorno</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td colspan="5">Cargando señales…</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<!-- =========================
-     ENTRY POINT
-     ========================= -->
-<script type="module">
-  import "./js/tabs.js";
-  import { initUniverse } from "./js/universe.js";
-  import { initSignals } from "./js/signals.js";
-  import { initAnalysisSelector } from "./js/analysis.js";
-
-  initUniverse();
-  initSignals();
-  initAnalysisSelector();
-</script>
 
 </body>
 </html>
