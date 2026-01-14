@@ -3,8 +3,8 @@
 // 🌍 UNIVERSO DEL SISTEMA (ALINEADO AL BACKEND REAL)
 // Fuente: /dashboard/tickers
 // Fuente: /dashboard/latest/{ticker}
-// Lee:
-//   latest.result.prediction.{price_now, price_pred, ret_ens_pct, recommendation}
+// Lee (con fallbacks robustos):
+//   ret_ens_pct, price_now, price_pred, recommendation
 // =====================================================
 
 import { switchTab } from "./tabs.js";
@@ -37,13 +37,28 @@ async function apiGet(url) {
 }
 
 // ---------------------------
-// Extractor (canónico)
+// Extractor (canónico + fallbacks)
 // ---------------------------
 function extractPredictionPayload(r) {
+  // Puede venir como prediction o plano en result
   return (
-    r?.latest?.result?.prediction || // ✅ real
+    r?.latest?.result?.prediction || // ✅ cuando existe prediction
     r?.latest?.prediction ||         // fallback
-    r?.latest?.result ||             // fallback viejo
+    r?.latest?.result ||             // ✅ cuando viene plano (como tu JSON)
+    null
+  );
+}
+
+// ---------------------------
+// Safe getters (clave para recommendation)
+// ---------------------------
+function getField(r, p, key) {
+  // Busca primero en prediction/result extraído (p),
+  // luego en latest.result directo, luego en latest directo.
+  return (
+    p?.[key] ??
+    r?.latest?.result?.[key] ??
+    r?.latest?.[key] ??
     null
   );
 }
@@ -66,16 +81,23 @@ function fmtConfidence(ret) {
   return `${Math.round(n * 100)}%`;
 }
 
-function fmtQuality(rec) {
-  const map = { BUY: "🔥", HOLD: "⚠️", SELL: "❌", MANTEN: "⚠️" };
-  return map[String(rec || "").toUpperCase()] || "—";
-}
-
 function fmtPrice(v) {
   if (v == null) return "—";
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
   return `$${n.toFixed(2)}`;
+}
+
+function fmtRecommendation(rec) {
+  if (!rec) return "—";
+  const r = String(rec).toUpperCase();
+
+  // soporta BUY/HOLD/SELL y tu "MANTEN"
+  if (r === "BUY") return `BUY 🔥`;
+  if (r === "SELL") return `SELL ❌`;
+  if (r === "HOLD" || r === "MANTEN") return `${rec} ⚠️`;
+
+  return rec; // si aparece otro label
 }
 
 // ---------------------------
@@ -102,13 +124,13 @@ export async function loadUniverse(force = false) {
       const r = await apiGet(`/dashboard/latest/${ticker}`);
       const p = extractPredictionPayload(r);
 
-      return {
-        ticker,
-        rec: p?.recommendation ?? null,
-        ret: p?.ret_ens_pct ?? null,
-        priceNow: p?.price_now ?? null,
-        pricePred: p?.price_pred ?? null,
-      };
+      // 👇 lectura robusta por campo
+      const rec = getField(r, p, "recommendation");
+      const ret = getField(r, p, "ret_ens_pct");
+      const priceNow = getField(r, p, "price_now");
+      const pricePred = getField(r, p, "price_pred");
+
+      return { ticker, rec, ret, priceNow, pricePred };
     })
   );
 
@@ -137,7 +159,7 @@ function renderUniverseTable() {
     tr.className = "hoverable";
     tr.innerHTML = `
       <td class="ticker"><strong>${u.ticker}</strong></td>
-      <td class="quality">${fmtQuality(u.rec)}</td>
+      <td class="rec">${fmtRecommendation(u.rec)}</td>
       <td class="price-now">${fmtPrice(u.priceNow)}</td>
       <td class="price-pred">${fmtPrice(u.pricePred)}</td>
       <td class="confidence">${fmtConfidence(u.ret)}</td>
