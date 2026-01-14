@@ -1,9 +1,11 @@
 // js/analysis.js
 // =======================================
 // 📊 ANÁLISIS MATEMÁTICO (USUARIO FINAL)
-// - Adaptado 100% al backend REAL
+// - SIEMPRE muestra datos si existen
+// - Compatible con backend REAL en 2 formas:
+//   A) latest.latest.result.prediction
+//   B) latest.latest.result (campos directos + meta)
 // - Usa summary + latest
-// - Lenguaje humano
 // - HTML intacto
 // =======================================
 
@@ -43,6 +45,7 @@ function money(v) {
 function pct(v) {
   if (v == null) return "—";
   const n = Number(v);
+  if (Number.isNaN(n)) return "—";
   const color = n >= 0 ? "#16a34a" : "#dc2626";
   return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
 }
@@ -92,7 +95,7 @@ export async function loadAnalysis(ticker) {
   updateStatus(`📊 Analizando ${ticker}…`, "—");
   clearAnalysis(false);
 
-  // 🔑 Dos fuentes reales
+  // 🔑 Dos fuentes
   const [summary, latest] = await Promise.all([
     apiGet("/dashboard/predictions/summary", { ticker }),
     apiGet(`/dashboard/latest/${ticker}`),
@@ -100,76 +103,106 @@ export async function loadAnalysis(ticker) {
 
   const series = summary?.data || [];
 
-  // 🔥 BACKEND REAL
+  // =====================================================
+  // ✅ COMPATIBILIDAD TOTAL CON BACKEND REAL
+  // - Forma A (antigua): result.prediction
+  // - Forma B (nueva):  result (campos directos + meta)
+  // =====================================================
   const result = latest?.latest?.result || {};
-  const meta = result?.meta || {};
-  const hist = result?.historical || {};
+  const pred = result?.prediction || result; // <-- CLAVE: no rompe lo anterior
+  const meta = result?.meta || pred?.meta || {};
+  const hist =
+    result?.historical ||
+    pred?.historical ||
+    {}; // puede vivir en result o pred
 
   // ---------------------------
   // Resultado principal
   // ---------------------------
   setText("ticker-name", ticker);
-  setText("date-pred", date(result?.date_base));
+  setText("date-pred", date(pred?.date_base || result?.date_base));
 
-  setText("rec", result?.recommendation || "—");
-  setText("pnow", money(result?.price_now));
-  setText("ppred", money(result?.price_pred));
-  setHTML("ret", pct(result?.ret_ens_pct));
+  setText("rec", pred?.recommendation || "—");
+  setText("pnow", money(pred?.price_now));
+  setText("ppred", money(pred?.price_pred));
+  setHTML("ret", pct(pred?.ret_ens_pct));
 
   // ---------------------------
-  // Confiabilidad del modelo
+  // Confiabilidad (lenguaje humano)
   // ---------------------------
+  const r2 =
+    pred?.r2 ??
+    pred?.r2_global ??
+    result?.r2 ??
+    result?.r2_global ??
+    null;
+
+  const mae =
+    pred?.mae ??
+    result?.mae ??
+    null;
+
+  const rmse =
+    pred?.rmse ??
+    result?.rmse ??
+    null;
+
   setText(
     "model-explains",
-    result?.r2_global != null
-      ? `${Math.round(result.r2_global * 100)}% del movimiento histórico`
-      : "—"
+    r2 != null ? `${Math.round(Number(r2) * 100)}% del movimiento histórico` : "—"
   );
 
   setText(
     "model-error-avg",
-    result?.mae != null ? `±${result.mae.toFixed(3)}` : "—"
+    mae != null ? `±${Number(mae).toFixed(3)}` : "—"
   );
 
   setText(
     "model-error-max",
-    result?.rmse != null ? `±${result.rmse.toFixed(3)}` : "—"
+    rmse != null ? `±${Number(rmse).toFixed(3)}` : "—"
   );
 
   // ---------------------------
   // Cómo se calculó
   // ---------------------------
-  setText(
-    "horizon",
-    meta?.horizon_days != null ? `${meta.horizon_days} días` : "—"
-  );
+  const horizon =
+    pred?.horizon_days ??
+    meta?.horizon_days ??
+    null;
+
+  setText("horizon", horizon != null ? `${horizon} días` : "—");
+
+  // nombres distintos según backend
+  const nFeatures = pred?.n_features ?? result?.n_features ?? null;
+  const pcaEff =
+    pred?.pca_dims_effective ??
+    pred?.pca_dims ??
+    result?.pca_dims_effective ??
+    result?.pca_dims ??
+    null;
 
   setText(
     "features-used",
-    result?.n_features != null
-      ? `${result.n_features} variables de mercado`
-      : "—"
+    nFeatures != null ? `${nFeatures} variables de mercado` : "—"
   );
 
   setText(
     "features-effective",
-    result?.pca_dims != null
-      ? `${result.pca_dims} variables relevantes`
-      : "—"
+    pcaEff != null ? `${pcaEff} variables relevantes` : "—"
   );
 
   setText(
     "windows-used",
-    hist?.n_windows != null
-      ? `${hist.n_windows} escenarios históricos`
-      : "—"
+    hist?.n_windows != null ? `${hist.n_windows} escenarios históricos` : "—"
   );
 
-  // ⚠️ El backend NO entrega n_rows
-  setText("rows-used", "—");
+  setText(
+    "rows-used",
+    hist?.n_rows != null ? `${hist.n_rows} días de información` : "—"
+  );
 
   // ---------------------------
-  // Chart
+  // Chart (si hay serie)
   // ---------------------------
   if (series.length) {
     requestAnimationFrame(() => renderChart(series));
@@ -201,11 +234,11 @@ function renderChart(data) {
   chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.map(d => date(d.date_base)),
+      labels: data.map((d) => date(d.date_base)),
       datasets: [
         {
           label: "Precio proyectado",
-          data: data.map(d => d.price_pred),
+          data: data.map((d) => d.price_pred),
           borderColor: "#38bdf8",
           backgroundColor: "rgba(56,189,248,.08)",
           borderWidth: 3,
@@ -215,7 +248,7 @@ function renderChart(data) {
         },
         {
           label: "Precio actual",
-          data: data.map(d => d.price_now ?? null),
+          data: data.map((d) => d.price_now ?? null),
           borderColor: "#10b981",
           borderWidth: 2,
           tension: 0.25,
@@ -257,11 +290,21 @@ function setHTML(id, value) {
 
 function clearAnalysis(destroyChart = false) {
   [
-    "rec","pnow","ppred","ret","ticker-name","date-pred",
-    "model-explains","model-error-avg","model-error-max",
-    "horizon","features-used","features-effective",
-    "windows-used","rows-used"
-  ].forEach(id => setText(id, "—"));
+    "rec",
+    "pnow",
+    "ppred",
+    "ret",
+    "ticker-name",
+    "date-pred",
+    "model-explains",
+    "model-error-avg",
+    "model-error-max",
+    "horizon",
+    "features-used",
+    "features-effective",
+    "windows-used",
+    "rows-used",
+  ].forEach((id) => setText(id, "—"));
 
   if (destroyChart && chartInstance) {
     chartInstance.destroy();
