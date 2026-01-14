@@ -139,14 +139,15 @@ const rmse = hist?.rmse_mean ?? null;
   );
 
   setText(
-    "model-error-avg",
-    mae != null ? `±${Number(mae).toFixed(3)}` : "—"
-  );
+  "model-error-avg",
+  mae != null ? `±${(Number(mae) * 100).toFixed(1)}%` : "—"
+);
 
-  setText(
-    "model-error-max",
-    rmse != null ? `±${Number(rmse).toFixed(3)}` : "—"
-  );
+setText(
+  "model-error-max",
+  rmse != null ? `±${(Number(rmse) * 100).toFixed(1)}%` : "—"
+);
+
 
   // ---------------------------
   // Cómo se calculó
