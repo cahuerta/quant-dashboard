@@ -1,7 +1,7 @@
 // js/analysis.js
 // =======================================
 // 📊 ANÁLISIS MATEMÁTICO (USUARIO FINAL)
-// - Siempre muestra datos
+// - Adaptado 100% al backend REAL
 // - Usa summary + latest
 // - Lenguaje humano
 // - HTML intacto
@@ -92,47 +92,48 @@ export async function loadAnalysis(ticker) {
   updateStatus(`📊 Analizando ${ticker}…`, "—");
   clearAnalysis(false);
 
-  // 🔑 Dos fuentes
+  // 🔑 Dos fuentes reales
   const [summary, latest] = await Promise.all([
     apiGet("/dashboard/predictions/summary", { ticker }),
     apiGet(`/dashboard/latest/${ticker}`),
   ]);
 
   const series = summary?.data || [];
-  const lastSeries = series.length ? series[series.length - 1] : null;
 
-  const pred = latest?.latest?.result?.prediction || {};
-  const hist = pred?.historical || {};
+  // 🔥 BACKEND REAL
+  const result = latest?.latest?.result || {};
+  const meta = result?.meta || {};
+  const hist = result?.historical || {};
 
   // ---------------------------
   // Resultado principal
   // ---------------------------
   setText("ticker-name", ticker);
-  setText("date-pred", date(pred?.date_base));
+  setText("date-pred", date(result?.date_base));
 
-  setText("rec", pred?.recommendation || "—");
-  setText("pnow", money(pred?.price_now));
-  setText("ppred", money(pred?.price_pred));
-  setHTML("ret", pct(pred?.ret_ens_pct));
+  setText("rec", result?.recommendation || "—");
+  setText("pnow", money(result?.price_now));
+  setText("ppred", money(result?.price_pred));
+  setHTML("ret", pct(result?.ret_ens_pct));
 
   // ---------------------------
-  // Confiabilidad (lenguaje humano)
+  // Confiabilidad del modelo
   // ---------------------------
   setText(
     "model-explains",
-    pred?.r2 != null
-      ? `${Math.round(pred.r2 * 100)}% del movimiento histórico`
+    result?.r2_global != null
+      ? `${Math.round(result.r2_global * 100)}% del movimiento histórico`
       : "—"
   );
 
   setText(
     "model-error-avg",
-    pred?.mae != null ? `±${pred.mae.toFixed(2)} USD` : "—"
+    result?.mae != null ? `±${result.mae.toFixed(3)}` : "—"
   );
 
   setText(
     "model-error-max",
-    pred?.rmse != null ? `±${pred.rmse.toFixed(2)} USD` : "—"
+    result?.rmse != null ? `±${result.rmse.toFixed(3)}` : "—"
   );
 
   // ---------------------------
@@ -140,22 +141,20 @@ export async function loadAnalysis(ticker) {
   // ---------------------------
   setText(
     "horizon",
-    pred?.horizon_days != null
-      ? `${pred.horizon_days} días`
-      : "—"
+    meta?.horizon_days != null ? `${meta.horizon_days} días` : "—"
   );
 
   setText(
     "features-used",
-    pred?.n_features != null
-      ? `${pred.n_features} variables de mercado`
+    result?.n_features != null
+      ? `${result.n_features} variables de mercado`
       : "—"
   );
 
   setText(
     "features-effective",
-    pred?.pca_dims_effective != null
-      ? `${pred.pca_dims_effective} variables relevantes`
+    result?.pca_dims != null
+      ? `${result.pca_dims} variables relevantes`
       : "—"
   );
 
@@ -166,18 +165,14 @@ export async function loadAnalysis(ticker) {
       : "—"
   );
 
-  setText(
-    "rows-used",
-    hist?.n_rows != null
-      ? `${hist.n_rows} días de información`
-      : "—"
-  );
+  // ⚠️ El backend NO entrega n_rows
+  setText("rows-used", "—");
 
   // ---------------------------
-  // Chart (si hay serie)
+  // Chart
   // ---------------------------
   if (series.length) {
-    requestAnimationFrame(() => renderChart(series, pred));
+    requestAnimationFrame(() => renderChart(series));
   }
 
   updateStatus(
@@ -189,7 +184,7 @@ export async function loadAnalysis(ticker) {
 // ---------------------------
 // Chart.js
 // ---------------------------
-function renderChart(data, last) {
+function renderChart(data) {
   if (typeof Chart === "undefined") return;
 
   const canvas = document.getElementById("chart");
