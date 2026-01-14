@@ -4,9 +4,7 @@
 // Fuente: /dashboard/tickers
 // Fuente: /dashboard/latest/{ticker}
 // Lee:
-//   latest.result.prediction.ret_ens_pct
-//   latest.result.prediction.recommendation
-// (fallbacks incluidos por si cambias el backend después)
+//   latest.result.prediction.{price_now, price_pred, ret_ens_pct, recommendation}
 // =====================================================
 
 import { switchTab } from "./tabs.js";
@@ -39,29 +37,20 @@ async function apiGet(url) {
 }
 
 // ---------------------------
-// Extractor (ALINEADO)
+// Extractor (canónico)
 // ---------------------------
 function extractPredictionPayload(r) {
-  // Backend real observado:
-  // r.latest.result.prediction.{ret_ens_pct, recommendation, ...}
-  // 1
-
-  const pred =
+  return (
     r?.latest?.result?.prediction || // ✅ real
     r?.latest?.prediction ||         // fallback
     r?.latest?.result ||             // fallback viejo
-    null;
-
-  return pred;
+    null
+  );
 }
 
 // ---------------------------
 // Formatters
 // ---------------------------
-function fmt(v) {
-  return v == null ? "—" : v;
-}
-
 function fmtReturn(v) {
   if (v == null) return "—";
   const n = Number(v);
@@ -71,7 +60,6 @@ function fmtReturn(v) {
 }
 
 function fmtConfidence(ret) {
-  // heurística simple: |ret|/5 cap 100%
   if (ret == null) return "—";
   const n = Math.min(Math.abs(Number(ret)) / 5, 1);
   if (Number.isNaN(n)) return "—";
@@ -79,8 +67,15 @@ function fmtConfidence(ret) {
 }
 
 function fmtQuality(rec) {
-  const map = { BUY: "🔥", HOLD: "⚠️", SELL: "❌" };
+  const map = { BUY: "🔥", HOLD: "⚠️", SELL: "❌", MANTEN: "⚠️" };
   return map[String(rec || "").toUpperCase()] || "—";
+}
+
+function fmtPrice(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return `$${n.toFixed(2)}`;
 }
 
 // ---------------------------
@@ -105,26 +100,23 @@ export async function loadUniverse(force = false) {
   const snaps = await Promise.allSettled(
     tickers.map(async (ticker) => {
       const r = await apiGet(`/dashboard/latest/${ticker}`);
-      const pred = extractPredictionPayload(r);
+      const p = extractPredictionPayload(r);
 
       return {
         ticker,
-        pred, // puede ser null si falló
+        rec: p?.recommendation ?? null,
+        ret: p?.ret_ens_pct ?? null,
+        priceNow: p?.price_now ?? null,
+        pricePred: p?.price_pred ?? null,
       };
     })
   );
 
-  universe = snaps.map((s, i) => {
-    if (s.status !== "fulfilled") {
-      return { ticker: tickers[i], rec: null, ret: null };
-    }
-    const p = s.value.pred;
-    return {
-      ticker: s.value.ticker,
-      rec: p?.recommendation ?? null,
-      ret: p?.ret_ens_pct ?? null,
-    };
-  });
+  universe = snaps.map((s, i) =>
+    s.status === "fulfilled"
+      ? s.value
+      : { ticker: tickers[i], rec: null, ret: null, priceNow: null, pricePred: null }
+  );
 
   lastRefresh = now;
   renderUniverseTable();
@@ -145,10 +137,11 @@ function renderUniverseTable() {
     tr.className = "hoverable";
     tr.innerHTML = `
       <td class="ticker"><strong>${u.ticker}</strong></td>
-      <td class="quality">${u.rec ? fmtQuality(u.rec) : "—"}</td>
+      <td class="quality">${fmtQuality(u.rec)}</td>
+      <td class="price-now">${fmtPrice(u.priceNow)}</td>
+      <td class="price-pred">${fmtPrice(u.pricePred)}</td>
       <td class="confidence">${fmtConfidence(u.ret)}</td>
       <td class="return">${fmtReturn(u.ret)}</td>
-      <td class="fundamental">—</td>
     `;
 
     tr.onclick = (e) => {
@@ -164,7 +157,6 @@ function renderUniverseTable() {
     if (degraded) {
       status.innerHTML = `⚠️ Error de backend`;
       status.style.color = "#f59e0b";
-      // deja pista exacta en consola
       console.warn("Universe degraded:", lastError);
     } else {
       status.style.color = "";
