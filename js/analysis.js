@@ -95,7 +95,7 @@ export async function loadAnalysis(ticker) {
   updateStatus(`📊 Analizando ${ticker}…`, "—");
   clearAnalysis(false);
 
-  // 🔑 Dos fuentes
+  // 🔑 Dos fuentes reales
   const [summary, latest] = await Promise.all([
     apiGet("/dashboard/predictions/summary", { ticker }),
     apiGet(`/dashboard/latest/${ticker}`),
@@ -104,17 +104,12 @@ export async function loadAnalysis(ticker) {
   const series = summary?.data || [];
 
   // =====================================================
-  // ✅ COMPATIBILIDAD TOTAL CON BACKEND REAL
-  // - Forma A (antigua): result.prediction
-  // - Forma B (nueva):  result (campos directos + meta)
+  // BACKEND REAL — COMPATIBILIDAD TOTAL
   // =====================================================
   const result = latest?.latest?.result || {};
-  const pred = result?.prediction || result; // <-- CLAVE: no rompe lo anterior
+  const pred = result?.prediction || result;
   const meta = result?.meta || pred?.meta || {};
-  const hist =
-    result?.historical ||
-    pred?.historical ||
-    {}; // puede vivir en result o pred
+  const hist = result?.historical || pred?.historical || {};
 
   // ---------------------------
   // Resultado principal
@@ -128,28 +123,31 @@ export async function loadAnalysis(ticker) {
   setHTML("ret", pct(pred?.ret_ens_pct));
 
   // ---------------------------
-  // Confiabilidad (lenguaje humano)
+  // Confiabilidad del modelo
+  // 🔥 PRIORIDAD CORRECTA: result → pred
   // ---------------------------
   const r2 =
-    pred?.r2 ??
-    pred?.r2_global ??
-    result?.r2 ??
     result?.r2_global ??
+    result?.r2 ??
+    pred?.r2_global ??
+    pred?.r2 ??
     null;
 
   const mae =
-    pred?.mae ??
     result?.mae ??
+    pred?.mae ??
     null;
 
   const rmse =
-    pred?.rmse ??
     result?.rmse ??
+    pred?.rmse ??
     null;
 
   setText(
     "model-explains",
-    r2 != null ? `${Math.round(Number(r2) * 100)}% del movimiento histórico` : "—"
+    r2 != null
+      ? `${Math.round(Number(r2) * 100)}% del movimiento histórico`
+      : "—"
   );
 
   setText(
@@ -166,19 +164,22 @@ export async function loadAnalysis(ticker) {
   // Cómo se calculó
   // ---------------------------
   const horizon =
-    pred?.horizon_days ??
     meta?.horizon_days ??
+    pred?.horizon_days ??
     null;
 
   setText("horizon", horizon != null ? `${horizon} días` : "—");
 
-  // nombres distintos según backend
-  const nFeatures = pred?.n_features ?? result?.n_features ?? null;
+  const nFeatures =
+    result?.n_features ??
+    pred?.n_features ??
+    null;
+
   const pcaEff =
-    pred?.pca_dims_effective ??
-    pred?.pca_dims ??
     result?.pca_dims_effective ??
     result?.pca_dims ??
+    pred?.pca_dims_effective ??
+    pred?.pca_dims ??
     null;
 
   setText(
@@ -202,7 +203,7 @@ export async function loadAnalysis(ticker) {
   );
 
   // ---------------------------
-  // Chart (si hay serie)
+  // Chart
   // ---------------------------
   if (series.length) {
     requestAnimationFrame(() => renderChart(series));
