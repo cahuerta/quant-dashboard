@@ -8,7 +8,6 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Estilos base mínimos -->
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -64,18 +63,12 @@
       font-weight: 600;
     }
 
-    #chart {
-      width: 100%;
-      height: 400px;
-    }
-
     .status-bar {
-      margin-top: 8px;
+      margin: 8px 0;
       font-size: 13px;
       color: #475569;
     }
 
-    /* 🔑 Tabs ocultos por defecto */
     [data-tab-content] {
       display: none;
     }
@@ -84,111 +77,110 @@
 
 <body>
 
-  <!-- =========================
-       NAV / TABS
-       ========================= -->
-  <nav>
-    <button data-tab-btn="universe">🌍 Universe</button>
-    <button data-tab-btn="analysis">📊 Analysis</button>
-    <button data-tab-btn="signals">🚨 Signals</button>
-  </nav>
+<!-- =========================
+     NAV
+     ========================= -->
+<nav>
+  <button data-tab-btn="universe" class="active">🌍 Universe</button>
+  <button data-tab-btn="analysis">📊 Analysis</button>
+  <button data-tab-btn="signals">🚨 Signals</button>
+</nav>
 
-  <!-- =========================
-       UNIVERSE
-       ========================= -->
-  <section data-tab-content="universe">
-    <h2>🌍 Universo del sistema</h2>
+<!-- =========================
+     UNIVERSE
+     ========================= -->
+<section data-tab-content="universe">
+  <h2>🌍 Universo del sistema</h2>
 
-    <div id="universe-status" class="status-bar">
-      Cargando universo…
-    </div>
+  <div id="universe-status" class="status-bar">
+    Cargando universo…
+  </div>
 
-    <table id="universe-table">
-      <thead>
-        <tr>
-          <th>Ticker</th>
-          <th>Calidad</th>
-          <th>Confianza</th>
-          <th>Retorno</th>
-          <th>Fundamental</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="5">Cargando datos…</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <table id="universe-table">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Recomendación</th>
+        <th>Confianza</th>
+        <th>Retorno</th>
+        <th>Fundamental</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="5">Cargando datos…</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
 
-  <!-- =========================
-       ANALYSIS
-       ========================= -->
-  <section data-tab-content="analysis">
-    <h2>📊 Análisis matemático</h2>
+<!-- =========================
+     ANALYSIS
+     ========================= -->
+<section data-tab-content="analysis">
+  <h2>📊 Análisis matemático</h2>
 
-    <div class="status-bar">
-      Activo: <strong id="ticker-name">—</strong> |
-      Fecha: <span id="date-pred">—</span>
-    </div>
+  <div class="status-bar">
+    Activo: <strong id="ticker-name">—</strong> |
+    Fecha: <span id="date-pred">—</span>
+  </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0">
-      <div><strong>Recomendación</strong><div id="rec">—</div></div>
-      <div><strong>Precio actual</strong><div id="pnow">—</div></div>
-      <div><strong>Precio proyectado</strong><div id="ppred">—</div></div>
-      <div><strong>Retorno</strong><div id="ret">—</div></div>
-      <div><strong>Confianza</strong><div id="conf">—</div></div>
-      <div><strong>Calidad</strong><div id="quality">—</div></div>
-    </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0">
+    <div><strong>Recomendación</strong><div id="rec">—</div></div>
+    <div><strong>Precio actual</strong><div id="pnow">—</div></div>
+    <div><strong>Precio proyectado</strong><div id="ppred">—</div></div>
+    <div><strong>Retorno</strong><div id="ret">—</div></div>
+    <div><strong>Confianza</strong><div id="conf">—</div></div>
+    <div><strong>Calidad</strong><div id="quality">—</div></div>
+  </div>
 
-    <div id="chart-info" class="status-bar">—</div>
-    <canvas id="chart"></canvas>
+  <canvas id="chart" height="320"></canvas>
 
-    <div class="status-bar">
-      <span id="status">—</span> |
-      <span id="last-update">—</span>
-    </div>
-  </section>
+  <div class="status-bar">
+    <span id="status">—</span> |
+    <span id="last-update">—</span>
+  </div>
+</section>
 
-  <!-- =========================
-       SIGNALS
-       ========================= -->
-  <section data-tab-content="signals">
-    <h2>🚨 Señales detectadas</h2>
+<!-- =========================
+     SIGNALS
+     ========================= -->
+<section data-tab-content="signals">
+  <h2>🚨 Señales detectadas</h2>
 
-    <div id="signals-status" class="status-bar">
-      Cargando señales…
-    </div>
+  <div id="signals-status" class="status-bar">
+    Cargando señales…
+  </div>
 
-    <table id="signals-table">
-      <thead>
-        <tr>
-          <th>Ticker</th>
-          <th>Calidad</th>
-          <th>Confianza</th>
-          <th>Recomendación</th>
-          <th>Retorno</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="5">Cargando señales…</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <table id="signals-table">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Calidad</th>
+        <th>Confianza</th>
+        <th>Recomendación</th>
+        <th>Retorno</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="5">Cargando señales…</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
 
-  <!-- =========================
-       ENTRY POINT
-       ========================= -->
-  <script type="module">
-    import "./js/tabs.js";
-    import "./js/universe.js";
-    import "./js/signals.js";
-    import "./js/analysis.js";
-    import { initUniverse } from "./js/universe.js";
-    initUniverse();
-  </script>
+<!-- =========================
+     ENTRY POINT
+     ========================= -->
+<script type="module">
+  import "./js/tabs.js";
+  import { initUniverse } from "./js/universe.js";
+  import { initSignals } from "./js/signals.js";
+
+  initUniverse();
+  initSignals();
+</script>
 
 </body>
 </html>
