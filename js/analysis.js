@@ -60,6 +60,32 @@ function formatDate(v) {
 }
 
 // ---------------------------
+// Selector (para que NO se rompa el import del HTML)
+// ---------------------------
+export async function initAnalysisSelector() {
+  const sel = document.getElementById("ticker-select");
+  if (!sel) return;
+
+  const t = await apiGet("/dashboard/tickers");
+  const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
+
+  sel.innerHTML = "";
+  tickers.forEach((tk) => {
+    const opt = document.createElement("option");
+    opt.value = tk;
+    opt.textContent = tk;
+    sel.appendChild(opt);
+  });
+
+  sel.onchange = () => loadAnalysis(sel.value);
+
+  if (tickers.length && !sel.value) {
+    sel.value = tickers[0];
+    loadAnalysis(tickers[0]);
+  }
+}
+
+// ---------------------------
 // Render principal
 // ---------------------------
 export async function loadAnalysis(ticker) {
@@ -67,9 +93,14 @@ export async function loadAnalysis(ticker) {
 
   try {
     currentTicker = ticker;
+
+    // Sync selector si existe (no rompe si no está)
+    const sel = document.getElementById("ticker-select");
+    if (sel && sel.value !== ticker) sel.value = ticker;
+
     updateStatus(`📊 Analizando ${ticker}…`, "—");
 
-    clearAnalysis(false);
+    clearAnalysis(false); // limpia KPIs pero no destruye chart aún
 
     const res = await apiGet("/dashboard/predictions/summary", { ticker });
 
@@ -82,6 +113,7 @@ export async function loadAnalysis(ticker) {
     const data = res.data;
     const last = data[data.length - 1];
 
+    // KPIs MATEMÁTICOS (solo predictions)
     setText("ticker-name", ticker);
     setText("rec", last.recommendation || "HOLD");
     setText("pnow", formatMoney(last.price_now));
@@ -89,6 +121,7 @@ export async function loadAnalysis(ticker) {
     setHTML("ret", formatReturn(last.ret_ens_pct));
     setText("date-pred", formatDate(last.date_base));
 
+    // NO señales aquí (se mantienen en blanco)
     setText("conf", "—");
     setText("quality", "—");
 
@@ -97,7 +130,7 @@ export async function loadAnalysis(ticker) {
       `Modelo matemático • ${data.length} predicciones históricas`
     );
 
-    // FIX: esperar frame + visibilidad real
+    // Asegura render con la pestaña visible
     requestAnimationFrame(() => {
       renderChart(data, last);
     });
@@ -124,6 +157,7 @@ const referenceLinesPlugin = {
     const last = chart.$lastPoint;
     if (!last || !yAxis) return;
 
+    // Línea precio actual
     if (last.price_now != null) {
       const y = yAxis.getPixelForValue(last.price_now);
       ctx.save();
@@ -134,9 +168,17 @@ const referenceLinesPlugin = {
       ctx.moveTo(yAxis.left, y);
       ctx.lineTo(yAxis.right, y);
       ctx.stroke();
+      ctx.fillStyle = "#10b981";
+      ctx.font = "12px SF Mono, monospace";
+      ctx.fillText(
+        `$${last.price_now.toLocaleString("es-CL")}`,
+        yAxis.right - 90,
+        y - 6
+      );
       ctx.restore();
     }
 
+    // Línea precio proyectado
     if (last.price_pred != null) {
       const y = yAxis.getPixelForValue(last.price_pred);
       ctx.save();
@@ -147,18 +189,33 @@ const referenceLinesPlugin = {
       ctx.moveTo(yAxis.left, y);
       ctx.lineTo(yAxis.right, y);
       ctx.stroke();
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "12px SF Mono, monospace";
+      ctx.fillText(
+        `$${last.price_pred.toLocaleString("es-CL")}`,
+        yAxis.right - 90,
+        y + 14
+      );
       ctx.restore();
     }
   },
 };
 
 function renderChart(data, last) {
-  if (typeof Chart === "undefined") return;
+  // Guard: Chart.js debe existir
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js no cargado aún");
+    return;
+  }
+
+  const labels = data.map((d) => formatDate(d.date_base));
+  const projected = data.map((d) => d.price_pred);
+  const actuals = data.map((d) => (d.price_now ?? null));
 
   const canvas = document.getElementById("chart");
   if (!canvas) return;
 
-  // FIX: no renderizar si está oculto (tab inactive)
+  // ✅ FIX CHART: si el tab está oculto, Chart.js calcula mal el tamaño
   if (canvas.offsetParent === null) return;
 
   const ctx = canvas.getContext("2d");
@@ -172,11 +229,11 @@ function renderChart(data, last) {
   chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.map(d => formatDate(d.date_base)),
+      labels,
       datasets: [
         {
           label: "Precio proyectado",
-          data: data.map(d => d.price_pred),
+          data: projected,
           borderColor: "#38bdf8",
           backgroundColor: "rgba(56,189,248,.08)",
           borderWidth: 3,
@@ -186,8 +243,9 @@ function renderChart(data, last) {
         },
         {
           label: "Precio actual",
-          data: data.map(d => d.price_now ?? null),
+          data: actuals,
           borderColor: "#10b981",
+          backgroundColor: "rgba(16,185,129,.05)",
           borderWidth: 2,
           tension: 0.25,
           fill: false,
@@ -212,12 +270,11 @@ function renderChart(data, last) {
     plugins: [referenceLinesPlugin],
   });
 
+  // Último punto para plugin
   chartInstance.$lastPoint = last;
 
-  // FIX: forzar recálculo de tamaño
-  setTimeout(() => {
-    chartInstance?.resize();
-  }, 0);
+  // ✅ FIX CHART: fuerza recálculo de tamaño al crear
+  setTimeout(() => chartInstance?.resize(), 0);
 }
 
 // ---------------------------
@@ -244,7 +301,7 @@ function clearAnalysis(destroyChart = false) {
     "ticker-name",
     "date-pred",
     "chart-info",
-  ].forEach(id => setText(id, "—"));
+  ].forEach((id) => setText(id, "—"));
 
   if (destroyChart && chartInstance) {
     chartInstance.destroy();
@@ -271,6 +328,7 @@ export function getChartData() {
 }
 
 export default {
+  initAnalysisSelector,
   loadAnalysis,
   getCurrentTicker,
   getChartData,
