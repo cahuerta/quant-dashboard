@@ -89,7 +89,7 @@ export async function loadUniverse(force = false) {
         apiGet(`/dashboard/latest/${t}`)
           .then(r => ({
             ticker: t,
-            data: r?.latest?.result || null
+            data: r?.latest?.prediction || null
 
           }))
       )
