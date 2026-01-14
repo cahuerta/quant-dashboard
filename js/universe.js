@@ -1,9 +1,7 @@
 // js/universe.js
 // =======================================
 // 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
-// - Fuente: /dashboard/latest/{ticker}
-// - Frontend SOLO OBSERVA
-// - NO calcula, NO decide
+// OBSERVADOR PURO DEL BACKEND
 // =======================================
 
 import { switchTab } from "./tabs.js";
@@ -34,7 +32,7 @@ async function apiGet(url) {
 }
 
 // ---------------------------
-// Formatters (UI ONLY)
+// Formatters
 // ---------------------------
 function formatReturn(v) {
   if (v == null) return "—";
@@ -44,20 +42,9 @@ function formatReturn(v) {
   return `<span style="color:${color};font-weight:600">${n.toFixed(2)}%</span>`;
 }
 
-function formatQuality(rec) {
-  const map = {
-    BUY: "🔥",
-    HOLD: "⚠️",
-    SELL: "❌",
-    MANTEN: "⚠️"
-  };
-  return map[rec] || "—";
-}
-
 function formatConfidence(ret) {
   if (ret == null) return "—";
-  const n = Math.min(Math.abs(ret) / 5, 1);
-  return `${Math.round(n * 100)}%`;
+  return `${Math.min(100, Math.round(Math.abs(ret) * 20))}%`;
 }
 
 // ---------------------------
@@ -65,7 +52,6 @@ function formatConfidence(ret) {
 // ---------------------------
 export async function loadUniverse(force = false) {
   const now = Date.now();
-
   if (!force && now - lastRefresh < 5 * 60 * 1000) {
     renderUniverseTable();
     return;
@@ -75,7 +61,7 @@ export async function loadUniverse(force = false) {
   universe = [];
 
   try {
-    console.log("🌍 Cargando universo…");
+    console.log("🌍 Cargando universo (alineado backend)…");
 
     // 1️⃣ Obtener tickers
     const tickersRes = await apiGet("/dashboard/tickers");
@@ -83,29 +69,21 @@ export async function loadUniverse(force = false) {
       ? tickersRes.tickers
       : [];
 
-    // 2️⃣ Snapshot por ticker
+    // 2️⃣ Leer snapshot REAL del backend
     const snapshots = await Promise.all(
-      tickers.map(t =>
-        apiGet(`/dashboard/latest/${t}`).then(r => {
-          const result = r?.latest?.result || null;
+      tickers.map(async ticker => {
+        const r = await apiGet(`/dashboard/latest/${ticker}`);
+        const result = r?.latest?.result || null;
 
-          return {
-            ticker: t,
-            data: result
-          };
-        })
-      )
+        return {
+          ticker,
+          recommendation: result?.recommendation ?? "SIN DATOS",
+          ret: result?.ret_ens_pct ?? null
+        };
+      })
     );
 
-    // 3️⃣ Normalizar para UI
-    universe = snapshots
-      .filter(x => x.data)
-      .map(x => ({
-        ticker: x.ticker,
-        ret: x.data.ret_ens_pct ?? null,
-        recommendation: x.data.recommendation ?? null
-      }));
-
+    universe = snapshots;
     lastRefresh = now;
     renderUniverseTable();
 
@@ -128,17 +106,15 @@ function renderUniverseTable() {
   universe.forEach(u => {
     const tr = document.createElement("tr");
     tr.className = "hoverable";
-
     tr.innerHTML = `
-      <td class="ticker"><strong>${u.ticker}</strong></td>
-      <td class="quality">${formatQuality(u.recommendation)}</td>
-      <td class="confidence">${formatConfidence(u.ret)}</td>
-      <td class="return">${formatReturn(u.ret)}</td>
-      <td class="fundamental">—</td>
+      <td><strong>${u.ticker}</strong></td>
+      <td>${u.recommendation}</td>
+      <td>${formatConfidence(u.ret)}</td>
+      <td>${formatReturn(u.ret)}</td>
+      <td>—</td>
     `;
 
-    tr.onclick = e => {
-      e.preventDefault();
+    tr.onclick = () => {
       switchTab("analysis");
       loadAnalysis(u.ticker);
     };
@@ -157,12 +133,11 @@ function updateUniverseStatus() {
   if (!el) return;
 
   if (degraded) {
-    el.textContent = "⚠️ Universo no disponible (API)";
+    el.textContent = "⚠️ Universo no disponible";
     el.style.color = "#f59e0b";
     return;
   }
 
-  el.style.color = "";
   el.innerHTML = `🌍 Universo: <strong>${universe.length}</strong>`;
 }
 
@@ -173,23 +148,3 @@ export function initUniverse() {
   loadUniverse(true);
   setInterval(() => loadUniverse(true), 5 * 60 * 1000);
 }
-
-// ---------------------------
-// Estilos mínimos
-// ---------------------------
-const style = document.createElement("style");
-style.textContent = `
-  .hoverable:hover {
-    background: #f3f4f6 !important;
-    cursor: pointer;
-  }
-  .ticker {
-    font-family: "SF Mono", monospace;
-  }
-`;
-document.head.appendChild(style);
-
-export default {
-  initUniverse,
-  loadUniverse
-};
