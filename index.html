@@ -67,6 +67,17 @@
       margin: 8px 0;
       font-size: 13px;
       color: #475569;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    select {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5f5;
+      font-size: 13px;
     }
 
     [data-tab-content] {
@@ -121,11 +132,16 @@
 <section data-tab-content="analysis">
   <h2>📊 Análisis matemático</h2>
 
+  <!-- Selector + estado -->
   <div class="status-bar">
-    Activo: <strong id="ticker-name">—</strong> |
-    Fecha: <span id="date-pred">—</span>
+    <label for="ticker-select"><strong>Ticker</strong></label>
+    <select id="ticker-select"></select>
+
+    <span>Activo: <strong id="ticker-name">—</strong></span>
+    <span>Fecha: <span id="date-pred">—</span></span>
   </div>
 
+  <!-- KPIs -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0">
     <div><strong>Recomendación</strong><div id="rec">—</div></div>
     <div><strong>Precio actual</strong><div id="pnow">—</div></div>
@@ -138,7 +154,7 @@
   <canvas id="chart" height="320"></canvas>
 
   <div class="status-bar">
-    <span id="status">—</span> |
+    <span id="status">—</span>
     <span id="last-update">—</span>
   </div>
 </section>
@@ -178,9 +194,11 @@
   import "./js/tabs.js";
   import { initUniverse } from "./js/universe.js";
   import { initSignals } from "./js/signals.js";
+  import { initAnalysisSelector } from "./js/analysis.js";
 
   initUniverse();
   initSignals();
+  initAnalysisSelector();
 </script>
 
 </body>
