@@ -2,10 +2,9 @@
 // =======================================
 // 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
 // - Fuente: /dashboard (main.py)
-// - NO usa /assets
-// - NO usa /signals
-// - Snapshot por ticker desde disco
-// - Click → analysis limpio
+// - OBSERVADOR PURO (no lógica, no cómputos)
+// - Snapshot por ticker desde backend
+// - Click → analysis
 // =======================================
 
 import { switchTab } from "./tabs.js";
@@ -36,7 +35,7 @@ async function apiGet(url) {
 }
 
 // ---------------------------
-// Formatters
+// Formatters (UI ONLY)
 // ---------------------------
 function formatReturn(v) {
   if (v == null) return "—";
@@ -50,14 +49,15 @@ function formatQuality(rec) {
   const map = {
     BUY: "🔥",
     HOLD: "⚠️",
-    SELL: "❌"
+    SELL: "❌",
+    MANTEN: "⚠️"
   };
   return map[rec] || "—";
 }
 
 function formatConfidence(ret) {
   if (ret == null) return "—";
-  const n = Math.min(Math.abs(ret) / 5, 1); // heurística simple
+  const n = Math.min(Math.abs(ret) / 5, 1);
   return `${Math.round(n * 100)}%`;
 }
 
@@ -86,21 +86,29 @@ export async function loadUniverse(force = false) {
     // 2️⃣ Snapshot por ticker (paralelo)
     const snapshots = await Promise.all(
       tickers.map(t =>
-        apiGet(`/dashboard/latest/${t}`)
-          .then(r => ({
-            ticker: t,
-            data: r?.latest?.prediction || null
+        apiGet(`/dashboard/latest/${t}`).then(r => {
+          const latest = r?.latest || {};
+          // 🔑 BACKEND TRUTH (fallback seguro)
+          const data =
+            latest.result ??
+            latest.prediction ??
+            null;
 
-          }))
+          return {
+            ticker: t,
+            data
+          };
+        })
       )
     );
 
+    // 3️⃣ Normalizar universo
     universe = snapshots
-      .filter(x => x.data)
+      .filter(x => x.data && typeof x.data === "object")
       .map(x => ({
         ticker: x.ticker,
-        ret: x.data.ret_ens_pct,
-        recommendation: x.data.recommendation
+        ret: x.data.ret_ens_pct ?? null,
+        recommendation: x.data.recommendation ?? null
       }));
 
     lastRefresh = now;
