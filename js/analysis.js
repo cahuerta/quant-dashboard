@@ -1,10 +1,10 @@
 // js/analysis.js
 // =======================================
-// 📊 ANÁLISIS MATEMÁTICO PURO (v2.1 FINAL)
-// - SOLO predictions (histórico calculado)
-// - NO señales | NO confianza | NO decisiones
-// - Determinístico + reproducible
-// - Chart con líneas de referencia
+// 📊 ANÁLISIS MATEMÁTICO (USUARIO FINAL)
+// - Siempre muestra datos
+// - Usa summary + latest
+// - Lenguaje humano
+// - HTML intacto
 // =======================================
 
 const API = "https://spy-2w-price-prediction.onrender.com";
@@ -13,54 +13,47 @@ let chartInstance = null;
 let currentTicker = null;
 
 // ---------------------------
-// API helper (defensivo)
+// API helpers
 // ---------------------------
 async function apiGet(url, params = {}) {
-  const urlParams = new URLSearchParams(params);
-  const fullUrl = `${API}${url}${urlParams.toString() ? `?${urlParams}` : ""}`;
+  const qs = new URLSearchParams(params);
+  const full = `${API}${url}${qs.toString() ? `?${qs}` : ""}`;
 
   try {
-    const res = await fetch(fullUrl, {
+    const res = await fetch(full, {
       cache: "no-cache",
       headers: { Accept: "application/json" },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
-  } catch (err) {
-    console.error(`❌ API error: ${url}`, err);
+  } catch (e) {
+    console.error("API error:", full, e);
     return null;
   }
 }
 
 // ---------------------------
-// Formatters
+// Formatters (humanos)
 // ---------------------------
-function formatMoney(v) {
+function money(v) {
   if (v == null) return "—";
-  const n = Number(v);
-  if (Number.isNaN(n)) return "—";
-  return `$${n.toLocaleString("es-CL")}`;
+  return `$${Number(v).toLocaleString("es-CL", { maximumFractionDigits: 2 })}`;
 }
 
-function formatReturn(v) {
+function pct(v) {
   if (v == null) return "—";
   const n = Number(v);
-  if (Number.isNaN(n)) return "—";
-  const color = n >= 0 ? "#10b981" : "#ef4444";
+  const color = n >= 0 ? "#16a34a" : "#dc2626";
   return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
 }
 
-function formatDate(v) {
-  if (v == null) return "—";
-  try {
-    return new Date(v).toLocaleDateString("es-CL");
-  } catch {
-    return "—";
-  }
+function date(v) {
+  if (!v) return "—";
+  return new Date(v).toLocaleDateString("es-CL");
 }
 
 // ---------------------------
-// Selector (para que NO se rompa el import del HTML)
+// Selector
 // ---------------------------
 export async function initAnalysisSelector() {
   const sel = document.getElementById("ticker-select");
@@ -71,15 +64,15 @@ export async function initAnalysisSelector() {
 
   sel.innerHTML = "";
   tickers.forEach((tk) => {
-    const opt = document.createElement("option");
-    opt.value = tk;
-    opt.textContent = tk;
-    sel.appendChild(opt);
+    const o = document.createElement("option");
+    o.value = tk;
+    o.textContent = tk;
+    sel.appendChild(o);
   });
 
   sel.onchange = () => loadAnalysis(sel.value);
 
-  if (tickers.length && !sel.value) {
+  if (tickers.length) {
     sel.value = tickers[0];
     loadAnalysis(tickers[0]);
   }
@@ -91,132 +84,116 @@ export async function initAnalysisSelector() {
 export async function loadAnalysis(ticker) {
   if (!ticker) return;
 
-  try {
-    currentTicker = ticker;
+  currentTicker = ticker;
 
-    // Sync selector si existe (no rompe si no está)
-    const sel = document.getElementById("ticker-select");
-    if (sel && sel.value !== ticker) sel.value = ticker;
+  const sel = document.getElementById("ticker-select");
+  if (sel && sel.value !== ticker) sel.value = ticker;
 
-    updateStatus(`📊 Analizando ${ticker}…`, "—");
+  updateStatus(`📊 Analizando ${ticker}…`, "—");
+  clearAnalysis(false);
 
-    clearAnalysis(false); // limpia KPIs pero no destruye chart aún
+  // 🔑 Dos fuentes
+  const [summary, latest] = await Promise.all([
+    apiGet("/dashboard/predictions/summary", { ticker }),
+    apiGet(`/dashboard/latest/${ticker}`),
+  ]);
 
-    const res = await apiGet("/dashboard/predictions/summary", { ticker });
+  const series = summary?.data || [];
+  const lastSeries = series.length ? series[series.length - 1] : null;
 
-    if (!res?.data?.length) {
-      updateStatus(`❌ Sin datos para ${ticker}`, new Date().toLocaleString("es-CL"));
-      clearAnalysis(true);
-      return;
-    }
+  const pred = latest?.latest?.result?.prediction || {};
+  const hist = pred?.historical || {};
 
-    const data = res.data;
-    const last = data[data.length - 1];
+  // ---------------------------
+  // Resultado principal
+  // ---------------------------
+  setText("ticker-name", ticker);
+  setText("date-pred", date(pred?.date_base));
 
-    // KPIs MATEMÁTICOS (solo predictions)
-    setText("ticker-name", ticker);
-    setText("rec", last.recommendation || "HOLD");
-    setText("pnow", formatMoney(last.price_now));
-    setText("ppred", formatMoney(last.price_pred));
-    setHTML("ret", formatReturn(last.ret_ens_pct));
-    setText("date-pred", formatDate(last.date_base));
+  setText("rec", pred?.recommendation || "—");
+  setText("pnow", money(pred?.price_now));
+  setText("ppred", money(pred?.price_pred));
+  setHTML("ret", pct(pred?.ret_ens_pct));
 
-    // NO señales aquí (se mantienen en blanco)
-    setText("conf", "—");
-    setText("quality", "—");
+  // ---------------------------
+  // Confiabilidad (lenguaje humano)
+  // ---------------------------
+  setText(
+    "model-explains",
+    pred?.r2 != null
+      ? `${Math.round(pred.r2 * 100)}% del movimiento histórico`
+      : "—"
+  );
 
-    setText(
-      "chart-info",
-      `Modelo matemático • ${data.length} predicciones históricas`
-    );
+  setText(
+    "model-error-avg",
+    pred?.mae != null ? `±${pred.mae.toFixed(2)} USD` : "—"
+  );
 
-    // Asegura render con la pestaña visible
-    requestAnimationFrame(() => {
-      renderChart(data, last);
-    });
+  setText(
+    "model-error-max",
+    pred?.rmse != null ? `±${pred.rmse.toFixed(2)} USD` : "—"
+  );
 
-    updateStatus(
-      `✅ ${ticker} | ${data.length} predicciones`,
-      new Date().toLocaleString("es-CL")
-    );
-  } catch (err) {
-    console.error(`❌ Error análisis ${ticker}:`, err);
-    updateStatus(`❌ Error: ${ticker}`, new Date().toLocaleString("es-CL"));
-    clearAnalysis(true);
+  // ---------------------------
+  // Cómo se calculó
+  // ---------------------------
+  setText(
+    "horizon",
+    pred?.horizon_days != null
+      ? `${pred.horizon_days} días`
+      : "—"
+  );
+
+  setText(
+    "features-used",
+    pred?.n_features != null
+      ? `${pred.n_features} variables de mercado`
+      : "—"
+  );
+
+  setText(
+    "features-effective",
+    pred?.pca_dims_effective != null
+      ? `${pred.pca_dims_effective} variables relevantes`
+      : "—"
+  );
+
+  setText(
+    "windows-used",
+    hist?.n_windows != null
+      ? `${hist.n_windows} escenarios históricos`
+      : "—"
+  );
+
+  setText(
+    "rows-used",
+    hist?.n_rows != null
+      ? `${hist.n_rows} días de información`
+      : "—"
+  );
+
+  // ---------------------------
+  // Chart (si hay serie)
+  // ---------------------------
+  if (series.length) {
+    requestAnimationFrame(() => renderChart(series, pred));
   }
+
+  updateStatus(
+    `✅ ${ticker} | análisis completo`,
+    new Date().toLocaleString("es-CL")
+  );
 }
 
 // ---------------------------
-// Chart.js con referencias
+// Chart.js
 // ---------------------------
-const referenceLinesPlugin = {
-  id: "referenceLines",
-  afterDraw(chart) {
-    const ctx = chart.ctx;
-    const yAxis = chart.scales.y;
-    const last = chart.$lastPoint;
-    if (!last || !yAxis) return;
-
-    // Línea precio actual
-    if (last.price_now != null) {
-      const y = yAxis.getPixelForValue(last.price_now);
-      ctx.save();
-      ctx.strokeStyle = "#10b981";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
-      ctx.beginPath();
-      ctx.moveTo(yAxis.left, y);
-      ctx.lineTo(yAxis.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#10b981";
-      ctx.font = "12px SF Mono, monospace";
-      ctx.fillText(
-        `$${last.price_now.toLocaleString("es-CL")}`,
-        yAxis.right - 90,
-        y - 6
-      );
-      ctx.restore();
-    }
-
-    // Línea precio proyectado
-    if (last.price_pred != null) {
-      const y = yAxis.getPixelForValue(last.price_pred);
-      ctx.save();
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(yAxis.left, y);
-      ctx.lineTo(yAxis.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#38bdf8";
-      ctx.font = "12px SF Mono, monospace";
-      ctx.fillText(
-        `$${last.price_pred.toLocaleString("es-CL")}`,
-        yAxis.right - 90,
-        y + 14
-      );
-      ctx.restore();
-    }
-  },
-};
-
 function renderChart(data, last) {
-  // Guard: Chart.js debe existir
-  if (typeof Chart === "undefined") {
-    console.warn("Chart.js no cargado aún");
-    return;
-  }
-
-  const labels = data.map((d) => formatDate(d.date_base));
-  const projected = data.map((d) => d.price_pred);
-  const actuals = data.map((d) => (d.price_now ?? null));
+  if (typeof Chart === "undefined") return;
 
   const canvas = document.getElementById("chart");
-  if (!canvas) return;
-
-  // ✅ FIX CHART: si el tab está oculto, Chart.js calcula mal el tamaño
-  if (canvas.offsetParent === null) return;
+  if (!canvas || canvas.offsetParent === null) return;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -229,11 +206,11 @@ function renderChart(data, last) {
   chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels,
+      labels: data.map(d => date(d.date_base)),
       datasets: [
         {
           label: "Precio proyectado",
-          data: projected,
+          data: data.map(d => d.price_pred),
           borderColor: "#38bdf8",
           backgroundColor: "rgba(56,189,248,.08)",
           borderWidth: 3,
@@ -243,9 +220,8 @@ function renderChart(data, last) {
         },
         {
           label: "Precio actual",
-          data: actuals,
+          data: data.map(d => d.price_now ?? null),
           borderColor: "#10b981",
-          backgroundColor: "rgba(16,185,129,.05)",
           borderWidth: 2,
           tension: 0.25,
           fill: false,
@@ -260,20 +236,14 @@ function renderChart(data, last) {
       interaction: { intersect: false, mode: "index" },
       plugins: {
         legend: { display: true, position: "top" },
-        tooltip: { mode: "index", intersect: false },
       },
       scales: {
         x: { grid: { color: "rgba(0,0,0,0.05)" } },
         y: { grid: { color: "rgba(0,0,0,0.05)" } },
       },
     },
-    plugins: [referenceLinesPlugin],
   });
 
-  // Último punto para plugin
-  chartInstance.$lastPoint = last;
-
-  // ✅ FIX CHART: fuerza recálculo de tamaño al crear
   setTimeout(() => chartInstance?.resize(), 0);
 }
 
@@ -292,16 +262,11 @@ function setHTML(id, value) {
 
 function clearAnalysis(destroyChart = false) {
   [
-    "rec",
-    "pnow",
-    "ppred",
-    "ret",
-    "conf",
-    "quality",
-    "ticker-name",
-    "date-pred",
-    "chart-info",
-  ].forEach((id) => setText(id, "—"));
+    "rec","pnow","ppred","ret","ticker-name","date-pred",
+    "model-explains","model-error-avg","model-error-max",
+    "horizon","features-used","features-effective",
+    "windows-used","rows-used"
+  ].forEach(id => setText(id, "—"));
 
   if (destroyChart && chartInstance) {
     chartInstance.destroy();
@@ -323,13 +288,8 @@ export function getCurrentTicker() {
   return currentTicker;
 }
 
-export function getChartData() {
-  return chartInstance?.data || null;
-}
-
 export default {
   initAnalysisSelector,
   loadAnalysis,
   getCurrentTicker,
-  getChartData,
 };
