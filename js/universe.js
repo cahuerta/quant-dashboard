@@ -1,10 +1,9 @@
 // js/universe.js
 // =======================================
 // 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
-// - Fuente: /dashboard (main.py)
-// - OBSERVADOR PURO (no lógica, no cómputos)
-// - Snapshot por ticker desde backend
-// - Click → analysis
+// - Fuente: /dashboard/latest/{ticker}
+// - Frontend SOLO OBSERVA
+// - NO calcula, NO decide
 // =======================================
 
 import { switchTab } from "./tabs.js";
@@ -42,7 +41,7 @@ function formatReturn(v) {
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
   const color = n >= 0 ? "#10b981" : "#ef4444";
-  return `<span style="color:${color};font-weight:600">${n.toFixed(1)}%</span>`;
+  return `<span style="color:${color};font-weight:600">${n.toFixed(2)}%</span>`;
 }
 
 function formatQuality(rec) {
@@ -66,6 +65,7 @@ function formatConfidence(ret) {
 // ---------------------------
 export async function loadUniverse(force = false) {
   const now = Date.now();
+
   if (!force && now - lastRefresh < 5 * 60 * 1000) {
     renderUniverseTable();
     return;
@@ -83,28 +83,23 @@ export async function loadUniverse(force = false) {
       ? tickersRes.tickers
       : [];
 
-    // 2️⃣ Snapshot por ticker (paralelo)
+    // 2️⃣ Snapshot por ticker
     const snapshots = await Promise.all(
       tickers.map(t =>
         apiGet(`/dashboard/latest/${t}`).then(r => {
-          const latest = r?.latest || {};
-          // 🔑 BACKEND TRUTH (fallback seguro)
-          const data =
-            latest.result ??
-            latest.prediction ??
-            null;
+          const result = r?.latest?.result || null;
 
           return {
             ticker: t,
-            data
+            data: result
           };
         })
       )
     );
 
-    // 3️⃣ Normalizar universo
+    // 3️⃣ Normalizar para UI
     universe = snapshots
-      .filter(x => x.data && typeof x.data === "object")
+      .filter(x => x.data)
       .map(x => ({
         ticker: x.ticker,
         ret: x.data.ret_ens_pct ?? null,
@@ -133,6 +128,7 @@ function renderUniverseTable() {
   universe.forEach(u => {
     const tr = document.createElement("tr");
     tr.className = "hoverable";
+
     tr.innerHTML = `
       <td class="ticker"><strong>${u.ticker}</strong></td>
       <td class="quality">${formatQuality(u.recommendation)}</td>
