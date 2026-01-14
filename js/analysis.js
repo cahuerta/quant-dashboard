@@ -126,24 +126,10 @@ export async function loadAnalysis(ticker) {
   // Confiabilidad del modelo
   // 🔥 PRIORIDAD CORRECTA: result → pred
   // ---------------------------
-  const r2 =
-    result?.r2_global ??
-    result?.r2 ??
-    pred?.r2_global ??
-    pred?.r2 ??
-    null;
+const r2 = hist?.hit_rate_mean ?? null;
+const mae = hist?.mae_mean ?? null;
+const rmse = hist?.rmse_mean ?? null;
 
-  const mae =
-  result?.historical?.mae ??
-  result?.mae ??
-  pred?.mae ??
-  null;
-
-const rmse =
-  result?.historical?.rmse ??
-  result?.rmse ??
-  pred?.rmse ??
-  null;
 
   setText(
     "model-explains",
