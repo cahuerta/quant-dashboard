@@ -1,10 +1,9 @@
 // js/analysis.js
 // =======================================
-// 📊 ANÁLISIS MATEMÁTICO PURO (v2.1 FINAL)
-// - SOLO predictions (histórico calculado)
-// - NO señales | NO confianza | NO decisiones
+// 📊 ANÁLISIS MATEMÁTICO PURO (v2.2 FINAL)
+// - SOLO predictions
 // - Determinístico + reproducible
-// - Chart con líneas de referencia
+// - Chart.js con lifecycle correcto
 // =======================================
 
 const API = "https://spy-2w-price-prediction.onrender.com";
@@ -13,7 +12,7 @@ let chartInstance = null;
 let currentTicker = null;
 
 // ---------------------------
-// API helper (defensivo)
+// API helper
 // ---------------------------
 async function apiGet(url, params = {}) {
   const urlParams = new URLSearchParams(params);
@@ -65,58 +64,45 @@ function formatDate(v) {
 export async function loadAnalysis(ticker) {
   if (!ticker) return;
 
-  try {
-    currentTicker = ticker;
-    updateStatus(`📊 Analizando ${ticker}…`, "—");
+  currentTicker = ticker;
+  updateStatus(`📊 Analizando ${ticker}…`, "—");
+  clearAnalysis(false);
 
-    clearAnalysis(false); // limpia KPIs pero no destruye chart aún
+  const res = await apiGet("/dashboard/predictions/summary", { ticker });
 
-    const res = await apiGet("/dashboard/predictions/summary", { ticker });
-
-    if (!res?.data?.length) {
-      updateStatus(`❌ Sin datos para ${ticker}`, new Date().toLocaleString("es-CL"));
-      clearAnalysis(true);
-      return;
-    }
-
-    const data = res.data;
-    const last = data[data.length - 1];
-
-    // KPIs MATEMÁTICOS (solo predictions)
-    setText("ticker-name", ticker);
-    setText("rec", last.recommendation || "HOLD");
-    setText("pnow", formatMoney(last.price_now));
-    setText("ppred", formatMoney(last.price_pred));
-    setHTML("ret", formatReturn(last.ret_ens_pct));
-    setText("date-pred", formatDate(last.date_base));
-
-    // NO señales aquí (se mantienen en blanco)
-    setText("conf", "—");
-    setText("quality", "—");
-
-    setText(
-      "chart-info",
-      `Modelo matemático • ${data.length} predicciones históricas`
-    );
-
-    // Asegura render con la pestaña visible
-    requestAnimationFrame(() => {
-      renderChart(data, last);
-    });
-
-    updateStatus(
-      `✅ ${ticker} | ${data.length} predicciones`,
-      new Date().toLocaleString("es-CL")
-    );
-  } catch (err) {
-    console.error(`❌ Error análisis ${ticker}:`, err);
-    updateStatus(`❌ Error: ${ticker}`, new Date().toLocaleString("es-CL"));
+  if (!res?.data?.length) {
+    updateStatus(`❌ Sin datos para ${ticker}`, new Date().toLocaleString("es-CL"));
     clearAnalysis(true);
+    return;
   }
+
+  const data = res.data;
+  const last = data[data.length - 1];
+
+  // KPIs
+  setText("ticker-name", ticker);
+  setText("rec", last.recommendation || "HOLD");
+  setText("pnow", formatMoney(last.price_now));
+  setText("ppred", formatMoney(last.price_pred));
+  setHTML("ret", formatReturn(last.ret_ens_pct));
+  setText("date-pred", formatDate(last.date_base));
+
+  setText("conf", "—");
+  setText("quality", "—");
+
+  // Render chart SOLO cuando la pestaña está visible
+  requestAnimationFrame(() => {
+    renderChart(data, last);
+  });
+
+  updateStatus(
+    `✅ ${ticker} | ${data.length} predicciones`,
+    new Date().toLocaleString("es-CL")
+  );
 }
 
 // ---------------------------
-// Chart.js con referencias
+// Plugin líneas de referencia
 // ---------------------------
 const referenceLinesPlugin = {
   id: "referenceLines",
@@ -126,66 +112,39 @@ const referenceLinesPlugin = {
     const last = chart.$lastPoint;
     if (!last || !yAxis) return;
 
-    // Línea precio actual
-    if (last.price_now != null) {
-      const y = yAxis.getPixelForValue(last.price_now);
-      ctx.save();
-      ctx.strokeStyle = "#10b981";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
-      ctx.beginPath();
-      ctx.moveTo(yAxis.left, y);
-      ctx.lineTo(yAxis.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#10b981";
-      ctx.font = "12px SF Mono, monospace";
-      ctx.fillText(
-        `$${last.price_now.toLocaleString("es-CL")}`,
-        yAxis.right - 90,
-        y - 6
-      );
-      ctx.restore();
-    }
-
-    // Línea precio proyectado
-    if (last.price_pred != null) {
-      const y = yAxis.getPixelForValue(last.price_pred);
-      ctx.save();
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(yAxis.left, y);
-      ctx.lineTo(yAxis.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#38bdf8";
-      ctx.font = "12px SF Mono, monospace";
-      ctx.fillText(
-        `$${last.price_pred.toLocaleString("es-CL")}`,
-        yAxis.right - 90,
-        y + 14
-      );
-      ctx.restore();
-    }
+    drawLine(ctx, yAxis, last.price_now, "#10b981", true);
+    drawLine(ctx, yAxis, last.price_pred, "#38bdf8", false);
   },
 };
 
-function renderChart(data, last) {
-  // Guard: Chart.js debe existir
-  if (typeof Chart === "undefined") {
-    console.warn("Chart.js no cargado aún");
-    return;
-  }
+function drawLine(ctx, yAxis, value, color, dashed) {
+  if (value == null) return;
+  const y = yAxis.getPixelForValue(value);
 
-  const labels = data.map(d => formatDate(d.date_base));
-  const projected = data.map(d => d.price_pred);
-  const actuals = data.map(d => (d.price_now ?? null));
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash(dashed ? [8, 4] : []);
+  ctx.beginPath();
+  ctx.moveTo(yAxis.left, y);
+  ctx.lineTo(yAxis.right, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------
+// Chart.js (LIFECYCLE CORRECTO)
+// ---------------------------
+function renderChart(data, last) {
+  if (typeof Chart === "undefined") return;
 
   const canvas = document.getElementById("chart");
-  if (!canvas) return;
+  if (!canvas || canvas.offsetParent === null) return;
+
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
+  // 🔥 FIX CLAVE
   if (chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
@@ -194,11 +153,11 @@ function renderChart(data, last) {
   chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels,
+      labels: data.map(d => formatDate(d.date_base)),
       datasets: [
         {
           label: "Precio proyectado",
-          data: projected,
+          data: data.map(d => d.price_pred),
           borderColor: "#38bdf8",
           backgroundColor: "rgba(56,189,248,.08)",
           borderWidth: 3,
@@ -208,9 +167,8 @@ function renderChart(data, last) {
         },
         {
           label: "Precio actual",
-          data: actuals,
+          data: data.map(d => d.price_now ?? null),
           borderColor: "#10b981",
-          backgroundColor: "rgba(16,185,129,.05)",
           borderWidth: 2,
           tension: 0.25,
           fill: false,
@@ -235,7 +193,6 @@ function renderChart(data, last) {
     plugins: [referenceLinesPlugin],
   });
 
-  // Último punto para plugin
   chartInstance.$lastPoint = last;
 }
 
@@ -262,7 +219,6 @@ function clearAnalysis(destroyChart = false) {
     "quality",
     "ticker-name",
     "date-pred",
-    "chart-info",
   ].forEach(id => setText(id, "—"));
 
   if (destroyChart && chartInstance) {
@@ -285,12 +241,4 @@ export function getCurrentTicker() {
   return currentTicker;
 }
 
-export function getChartData() {
-  return chartInstance?.data || null;
-}
-
-export default {
-  loadAnalysis,
-  getCurrentTicker,
-  getChartData,
-};
+export default { loadAnalysis };
