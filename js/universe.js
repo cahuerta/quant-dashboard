@@ -1,13 +1,14 @@
 // js/universe.js
 // =======================================
-// 🌍 UNIVERSO DEL SISTEMA (BACKEND-ALIGNED)
-// OBSERVADOR PURO DEL BACKEND
+// 🌍 UNIVERSO DEL SISTEMA (BACKEND REAL)
+// Fuente: /dashboard/latest/{ticker}
+// Lee: latest.result (NO prediction)
 // =======================================
 
 import { switchTab } from "./tabs.js";
 import { loadAnalysis } from "./analysis.js";
 
-const API = "https://spy-2w-price-prediction.onrender.com";
+const API = "https://diction.onrender.com";
 
 let universe = [];
 let lastRefresh = 0;
@@ -34,26 +35,25 @@ async function apiGet(url) {
 // ---------------------------
 // Formatters
 // ---------------------------
-function formatReturn(v) {
+function fmt(v) {
+  return v == null ? "—" : v;
+}
+
+function fmtReturn(v) {
   if (v == null) return "—";
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
-  const color = n >= 0 ? "#10b981" : "#ef4444";
+  const color = n >= 0 ? "#16a34a" : "#dc2626";
   return `<span style="color:${color};font-weight:600">${n.toFixed(2)}%</span>`;
 }
 
-function formatConfidence(ret) {
-  if (ret == null) return "—";
-  return `${Math.min(100, Math.round(Math.abs(ret) * 20))}%`;
-}
-
 // ---------------------------
-// Carga principal
+// Load universe
 // ---------------------------
 export async function loadUniverse(force = false) {
   const now = Date.now();
   if (!force && now - lastRefresh < 5 * 60 * 1000) {
-    renderUniverseTable();
+    render();
     return;
   }
 
@@ -61,43 +61,43 @@ export async function loadUniverse(force = false) {
   universe = [];
 
   try {
-    console.log("🌍 Cargando universo (alineado backend)…");
+    // 1) Tickers
+    const t = await apiGet("/dashboard/tickers");
+    const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
 
-    // 1️⃣ Obtener tickers
-    const tickersRes = await apiGet("/dashboard/tickers");
-    const tickers = Array.isArray(tickersRes?.tickers)
-      ? tickersRes.tickers
-      : [];
-
-    // 2️⃣ Leer snapshot REAL del backend
-    const snapshots = await Promise.all(
+    // 2) Snapshot real por ticker
+    const snaps = await Promise.all(
       tickers.map(async ticker => {
         const r = await apiGet(`/dashboard/latest/${ticker}`);
-        const result = r?.latest?.result || null;
+        const d = r?.latest?.result || null;
 
         return {
           ticker,
-          recommendation: result?.recommendation ?? "SIN DATOS",
-          ret: result?.ret_ens_pct ?? null
+          data: d
         };
       })
     );
 
-    universe = snapshots;
-    lastRefresh = now;
-    renderUniverseTable();
+    universe = snaps.map(x => ({
+      ticker: x.ticker,
+      recommendation: x.data?.recommendation || "SIN DATOS",
+      ret: x.data?.ret_ens_pct ?? null
+    }));
 
-  } catch (err) {
-    console.error("❌ Error cargando universo:", err);
+    lastRefresh = now;
+    render();
+
+  } catch (e) {
+    console.error("❌ Universe error", e);
     degraded = true;
-    renderUniverseTable();
+    render();
   }
 }
 
 // ---------------------------
-// Render UI
+// Render
 // ---------------------------
-function renderUniverseTable() {
+function render() {
   const tbody = document.querySelector("#universe-table tbody");
   if (!tbody) return;
 
@@ -108,37 +108,24 @@ function renderUniverseTable() {
     tr.className = "hoverable";
     tr.innerHTML = `
       <td><strong>${u.ticker}</strong></td>
-      <td>${u.recommendation}</td>
-      <td>${formatConfidence(u.ret)}</td>
-      <td>${formatReturn(u.ret)}</td>
+      <td>${fmt(u.recommendation)}</td>
+      <td>—</td>
+      <td>${fmtReturn(u.ret)}</td>
       <td>—</td>
     `;
-
     tr.onclick = () => {
       switchTab("analysis");
       loadAnalysis(u.ticker);
     };
-
     tbody.appendChild(tr);
   });
 
-  updateUniverseStatus();
-}
-
-// ---------------------------
-// Status
-// ---------------------------
-function updateUniverseStatus() {
-  const el = document.getElementById("universe-status");
-  if (!el) return;
-
-  if (degraded) {
-    el.textContent = "⚠️ Universo no disponible";
-    el.style.color = "#f59e0b";
-    return;
+  const s = document.getElementById("universe-status");
+  if (s) {
+    s.innerHTML = degraded
+      ? "⚠️ Error de backend"
+      : `🌍 Universo: <strong>${universe.length}</strong>`;
   }
-
-  el.innerHTML = `🌍 Universo: <strong>${universe.length}</strong>`;
 }
 
 // ---------------------------
@@ -148,3 +135,5 @@ export function initUniverse() {
   loadUniverse(true);
   setInterval(() => loadUniverse(true), 5 * 60 * 1000);
 }
+
+export default { initUniverse };
