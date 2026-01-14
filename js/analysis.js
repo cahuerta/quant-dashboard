@@ -134,14 +134,16 @@ export async function loadAnalysis(ticker) {
     null;
 
   const mae =
-    result?.mae ??
-    pred?.mae ??
-    null;
+  result?.historical?.mae ??
+  result?.mae ??
+  pred?.mae ??
+  null;
 
-  const rmse =
-    result?.rmse ??
-    pred?.rmse ??
-    null;
+const rmse =
+  result?.historical?.rmse ??
+  result?.rmse ??
+  pred?.rmse ??
+  null;
 
   setText(
     "model-explains",
