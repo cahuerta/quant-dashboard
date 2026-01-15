@@ -114,6 +114,8 @@
   <button data-tab-btn="universe" class="active">🌍 Universe</button>
   <button data-tab-btn="analysis">📊 Analysis</button>
   <button data-tab-btn="signals">🚨 Signals</button>
+  <button data-tab-btn="screener">🧪 Screener</button>
+
 </nav>
 
 <!-- =========================
@@ -209,6 +211,39 @@
     <tbody>
       <tr>
         <td colspan="5">Cargando señales…</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+  <!-- =========================
+     SCREENER (NUEVO)
+     ========================= -->
+<section data-tab-content="screener">
+  <h2>🧪 Candidatos del Screener</h2>
+
+  <div class="status-bar">
+    <span id="screener-meta">—</span>
+  </div>
+
+  <table id="screener-table">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Ticker</th>
+        <th>Score</th>
+        <th>Calidad</th>
+        <th>RSI</th>
+        <th>Sharpe</th>
+        <th>Beta</th>
+        <th>Volatilidad</th>
+        <th>Trend 3M</th>
+        <th>Fundamental</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="10">Cargando screener…</td>
       </tr>
     </tbody>
   </table>
