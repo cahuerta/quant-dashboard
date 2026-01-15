@@ -11,6 +11,7 @@
 import { initUniverse } from "./universe.js";
 import { loadAnalysis } from "./analysis.js";
 import { initSignals } from "./signals.js";
+import { initScreener } from "./screener.js";
 
 // ---------------------------
 // Estado interno
@@ -21,10 +22,11 @@ let initialized = {
   universe: false,
   analysis: false,
   signals: false
+  screener: false
 };
 
 // Tabs válidos (contrato explícito)
-const VALID_TABS = ["universe", "analysis", "signals"];
+const VALID_TABS = ["universe", "analysis", "signals", "screener"];
 const STORAGE_KEY = "quant_active_tab";
 
 // ---------------------------
@@ -97,6 +99,14 @@ function initTab(tabName) {
         initialized.signals = true;
       }
       break;
+      
+      case "screener":
+     if (!initialized.screener) {
+       console.log("🧪 Inicializando Screener…");
+       initScreener();
+       initialized.screener = true;
+     }
+     break;
   }
 }
 
