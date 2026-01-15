@@ -21,7 +21,7 @@ let currentTab = null;
 let initialized = {
   universe: false,
   analysis: false,
-  signals: false
+  signals: false,
   screener: false
 };
 
