@@ -112,14 +112,14 @@
      ========================= -->
 <nav>
   <button data-tab-btn="universe" class="active">🌍 Universe</button>
+  <button data-tab-btn="universe-cl">🇨🇱 Chile</button>
   <button data-tab-btn="analysis">📊 Analysis</button>
   <button data-tab-btn="signals">🚨 Signals</button>
   <button data-tab-btn="screener">🧪 Screener</button>
-
 </nav>
 
 <!-- =========================
-     UNIVERSE (CORREGIDO)
+     UNIVERSE (GLOBAL)
      ========================= -->
 <section data-tab-content="universe">
   <h2>🌍 Universo de activos</h2>
@@ -133,18 +133,45 @@
         <th>Precio proyectado</th>
         <th>Calidad</th>
         <th>Retorno</th>
+        <th>Fundamental</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td colspan="6">Cargando universo…</td>
+        <td colspan="7">Cargando universo…</td>
       </tr>
     </tbody>
   </table>
 </section>
 
 <!-- =========================
-     ANALYSIS (SIN CAMBIOS)
+     UNIVERSE CHILE
+     ========================= -->
+<section data-tab-content="universe-cl">
+  <h2>🇨🇱 Universo Chile (IPSA)</h2>
+
+  <table id="universe-cl-table">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Recomendación</th>
+        <th>Precio actual</th>
+        <th>Precio proyectado</th>
+        <th>Calidad</th>
+        <th>Retorno</th>
+        <th>Fundamental</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="7">Cargando universo Chile…</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- =========================
+     ANALYSIS
      ========================= -->
 <section data-tab-content="analysis">
   <h2>📊 Análisis matemático</h2>
@@ -181,10 +208,7 @@
     <div class="card"><strong>Días de información histórica</strong><div id="rows-used">—</div></div>
   </div>
 
-  <div class="chart-container">
   <canvas id="chart"></canvas>
-</div>
-
 
   <div class="status-bar">
     <span id="status">—</span>
@@ -193,7 +217,7 @@
 </section>
 
 <!-- =========================
-     SIGNALS (SIN CAMBIOS)
+     SIGNALS
      ========================= -->
 <section data-tab-content="signals">
   <h2>🚨 Señales del sistema</h2>
@@ -216,8 +240,8 @@
   </table>
 </section>
 
-  <!-- =========================
-     SCREENER (NUEVO)
+<!-- =========================
+     SCREENER
      ========================= -->
 <section data-tab-content="screener">
   <h2>🧪 Candidatos del Screener</h2>
@@ -250,17 +274,22 @@
 </section>
 
 <!-- =========================
-     ENTRY POINT (NO SE TOCA)
+     ENTRY POINT
      ========================= -->
 <script type="module">
   import "./js/tabs.js";
   import { initUniverse } from "./js/universe.js";
+  import { initUniverseChile } from "./js/universe_chile.js";
   import { initSignals } from "./js/signals.js";
   import { initAnalysisSelector } from "./js/analysis.js";
   import { initScreener } from "./js/screener.js";
 
   initUniverse();
+  initUniverseChile();
   initSignals();
   initAnalysisSelector();
   initScreener();
 </script>
+
+</body>
+</html>
