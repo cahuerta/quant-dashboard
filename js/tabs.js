@@ -1,14 +1,10 @@
 // js/tabs.js
 // =======================================
 // 🧭 TABS ORCHESTRATOR (PRODUCTION READY)
-// - Controla vistas (Universe / Analysis / Signals)
-// - Inicializa módulos UNA sola vez
-// - Persistencia de tab activo (UX)
-// - Deep-link ?ticker=
-// - NO lógica de negocio | NO APIs
 // =======================================
 
 import { initUniverse } from "./universe.js";
+import { initUniverseChile } from "./universe_chile.js"; // ✅ NUEVO
 import { loadAnalysis } from "./analysis.js";
 import { initSignals } from "./signals.js";
 import { initScreener } from "./screener.js";
@@ -20,13 +16,21 @@ let currentTab = null;
 
 let initialized = {
   universe: false,
+  "universe-cl": false, // ✅ NUEVO
   analysis: false,
   signals: false,
   screener: false
 };
 
 // Tabs válidos (contrato explícito)
-const VALID_TABS = ["universe", "analysis", "signals", "screener"];
+const VALID_TABS = [
+  "universe",
+  "universe-cl", // ✅ NUEVO
+  "analysis",
+  "signals",
+  "screener"
+];
+
 const STORAGE_KEY = "quant_active_tab";
 
 // ---------------------------
@@ -85,8 +89,15 @@ function initTab(tabName) {
       }
       break;
 
+    case "universe-cl": // ✅ NUEVO
+      if (!initialized["universe-cl"]) {
+        console.log("🇨🇱 Inicializando Universe Chile…");
+        initUniverseChile();
+        initialized["universe-cl"] = true;
+      }
+      break;
+
     case "analysis":
-      // Analysis es on-demand (loadAnalysis)
       if (!initialized.analysis) {
         initialized.analysis = true;
       }
@@ -99,14 +110,14 @@ function initTab(tabName) {
         initialized.signals = true;
       }
       break;
-      
-      case "screener":
-     if (!initialized.screener) {
-       console.log("🧪 Inicializando Screener…");
-       initScreener();
-       initialized.screener = true;
-     }
-     break;
+
+    case "screener":
+      if (!initialized.screener) {
+        console.log("🧪 Inicializando Screener…");
+        initScreener();
+        initialized.screener = true;
+      }
+      break;
   }
 }
 
@@ -130,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupTabButtons();
 
-  // Tab inicial (persistido o Universe)
   const savedTab = localStorage.getItem(STORAGE_KEY);
   const initialTab =
     savedTab && VALID_TABS.includes(savedTab) ? savedTab : "universe";
@@ -170,7 +180,6 @@ export function resetTabs() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-// Export default limpio
 export default {
   switchTab,
   getCurrentTab,
