@@ -117,6 +117,12 @@ export async function loadUniverse(force = false) {
   // 1) tickers
   const t = await apiGet("/dashboard/tickers");
   const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
+  const sig = await apiGet("/signals");
+  const signals = Array.isArray(sig?.signals) ? sig.signals : [];
+  const signalsByTicker = Object.fromEntries(
+     signals.map(s => [s.ticker, s])
+  );
+
 
   // 2) snapshots
   const snaps = await Promise.allSettled(
@@ -129,8 +135,10 @@ export async function loadUniverse(force = false) {
       const ret = getField(r, p, "ret_ens_pct");
       const priceNow = getField(r, p, "price_now");
       const pricePred = getField(r, p, "price_pred");
+      const s = signalsByTicker[ticker];
+      const fundamentalFlag = s?.fundamental_flag ?? null;
 
-      return { ticker, rec, ret, priceNow, pricePred };
+      return { ticker, rec, ret, priceNow, pricePred,fundamentalFlag };
     })
   );
 
@@ -164,6 +172,8 @@ function renderUniverseTable() {
       <td class="price-pred">${fmtPrice(u.pricePred)}</td>
       <td class="confidence">${fmtConfidence(u.ret)}</td>
       <td class="return">${fmtReturn(u.ret)}</td>
+      <td class="fundamental">${u.fundamentalFlag ?? "—"}</td>
+
     `;
 
     tr.onclick = (e) => {
