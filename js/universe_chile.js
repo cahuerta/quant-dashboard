@@ -7,7 +7,9 @@
 // - Sin lógica de negocio
 // =======================================
 
-const API_BASE = ""; // mismo origen
+// ✅ 1) Pon el mismo API que Universe (si Universe usa absoluto, acá igual)
+const API_BASE = window.API_BASE || ""; 
+// Si estás en Vite, cambia a: const API_BASE = import.meta.env.VITE_API_URL;
 
 function fmtPrice(v) {
   if (v == null || Number.isNaN(Number(v))) return "—";
@@ -21,36 +23,48 @@ function fmtPct(v) {
   return `${sign}${n.toFixed(2)}%`;
 }
 
-// Fetch único (mismo endpoint que Universe)
 async function fetchSignals() {
-  const res = await fetch(`${API_BASE}/signals`, {
+  const url = `${API_BASE}/signals`;
+  const res = await fetch(url, {
     cache: "no-cache",
     headers: { Accept: "application/json" }
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} on ${url} | ${text.slice(0, 200)}`);
+  }
   return await res.json();
 }
 
-// Inicializador público
 export async function initUniverseChile() {
   const table = document.querySelector("#universe-cl-table");
-  if (!table) return;
+  if (!table) {
+    console.warn("UniverseChile: no existe #universe-cl-table");
+    return;
+  }
 
   const tbody = table.querySelector("tbody");
+  if (!tbody) {
+    console.warn("UniverseChile: table sin <tbody>");
+    return;
+  }
+
   tbody.innerHTML = `<tr><td colspan="7">Cargando universo Chile…</td></tr>`;
 
   try {
     const data = await fetchSignals();
 
-    // Filtrar SOLO Chile (.SN)
-    const chile = Array.isArray(data)
-      ? data.filter(s => typeof s.ticker === "string" && s.ticker.endsWith(".SN"))
-      : [];
+    // ✅ 2) soporta array o data.signals/items
+    const raw = Array.isArray(data) ? data : (data?.signals || data?.items || []);
+
+    const chile = raw.filter(
+      s => typeof s?.ticker === "string" && s.ticker.endsWith(".SN")
+    );
 
     tbody.innerHTML = "";
 
     if (chile.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7">Sin datos de Chile</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7">Sin datos de Chile (.SN)</td></tr>`;
       return;
     }
 
@@ -69,7 +83,7 @@ export async function initUniverseChile() {
     }
   } catch (e) {
     console.error("❌ Universe Chile error:", e);
-    tbody.innerHTML = `<tr><td colspan="7">Error cargando Chile</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7">Error cargando Chile: ${String(e.message || e)}</td></tr>`;
   }
 }
 
