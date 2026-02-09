@@ -21,38 +21,92 @@ export async function initScreener() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
-    const c = data.candidates || [];
+    const candidates = data.candidates || [];
 
     meta.textContent =
       `Generado: ${data.generated_at} · ` +
       `Universe: ${data.n_universe} · ` +
-      `Candidatos: ${c.length} · ` +
+      `Candidatos: ${candidates.length} · ` +
       `IA: ${data.ia_available ? "ON" : "OFF"}`;
 
-    if (!c.length) {
-      table.innerHTML =
-        `<tr><td colspan="10">Sin candidatos (filtros estrictos)</td></tr>`;
-      return;
+    let rows = [];
+
+    // =================================================
+    // 1️⃣ CANDIDATOS ESTRICTOS
+    // =================================================
+    if (candidates.length) {
+      rows.push(
+        ...candidates.map((x, i) => renderRow(x, i + 1))
+      );
+    } else {
+      rows.push(`
+        <tr class="muted">
+          <td colspan="10">Sin candidatos (filtros estrictos)</td>
+        </tr>
+      `);
     }
 
-    table.innerHTML = c.map((x, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td><strong>${x.ticker}</strong></td>
-        <td>${x.score}</td>
-        <td>${x.quality}</td>
-        <td>${x.rsi_wilder}</td>
-        <td>${x.sharpe_ratio}</td>
-        <td>${x.beta_spy}</td>
-        <td>${x.volatility}</td>
-        <td>${x.trend_3m_pct}%</td>
-        <td>${x.fundamental_flag ?? "—"}</td>
+    // =================================================
+    // 2️⃣ SEPARADOR VISUAL
+    // =================================================
+    rows.push(`
+      <tr class="separator">
+        <td colspan="10">
+          <strong>Top 10 mejor score (sin filtros)</strong>
+        </td>
       </tr>
-    `).join("");
+    `);
+
+    // =================================================
+    // 3️⃣ TOP 10 GLOBAL (SIEMPRE)
+    // =================================================
+    const top10 = [...candidates]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    if (!top10.length) {
+      rows.push(`
+        <tr class="muted">
+          <td colspan="10">No hay datos suficientes</td>
+        </tr>
+      `);
+    } else {
+      rows.push(
+        ...top10.map((x, i) => renderRow(x, i + 1))
+      );
+    }
+
+    table.innerHTML = rows.join("");
 
   } catch (e) {
     table.innerHTML =
       `<tr><td colspan="10">Error cargando screener</td></tr>`;
     console.error("Screener load error:", e);
   }
+}
+
+// =====================================================
+// Helper render fila
+// =====================================================
+function renderRow(x, rank) {
+  return `
+    <tr>
+      <td>${rank}</td>
+      <td><strong>${x.ticker}</strong></td>
+      <td>${x.score}</td>
+      <td>${x.quality}</td>
+      <td>${x.rsi_wilder}</td>
+      <td>${x.sharpe_ratio}</td>
+      <td>${x.beta_spy}</td>
+      <td>${x.volatility}</td>
+      <td>${x.trend_3m_pct}%</td>
+      <td title="${
+        x.fundamental
+          ? `Mispricing: ${x.fundamental.mispricing_pct}% · Margin: ${x.fundamental.margin_safety_pct}%`
+          : "Sin fundamental"
+      }">
+        ${x.fundamental_flag ?? "—"}
+      </td>
+    </tr>
+  `;
 }
