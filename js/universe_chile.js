@@ -1,90 +1,218 @@
 // js/universe_chile.js
 // =======================================
-// 🇨🇱 UNIVERSE CHILE (IPSA)
-// - Reutiliza el MISMO backend que Universe
-// - Filtra SOLO tickers chilenos (.SN)
-// - No llama screener
-// - Sin lógica de negocio
+// 🇨🇱 UNIVERSE CHILE (IPSA) — ALINEADO
+// Fuente: /dashboard/tickers
+// Fuente: /dashboard/latest/{ticker}
+// 🔹 SOLO tickers .SN
+// 🔹 predictions = fuente de verdad
+// 🔹 signals = SOLO contexto (fundamental_flag)
 // =======================================
 
-// ✅ 1) Pon el mismo API que Universe (si Universe usa absoluto, acá igual)
-const API_BASE = window.API_BASE || ""; 
-// Si estás en Vite, cambia a: const API_BASE = import.meta.env.VITE_API_URL;
+import { switchTab } from "./tabs.js";
+import { loadAnalysis } from "./analysis.js";
+
+const API = "https://spy-2w-price-prediction.onrender.com";
+
+let universe = [];
+let lastRefresh = 0;
+let degraded = false;
+let lastError = "";
+
+// ---------------------------
+// API helper
+// ---------------------------
+async function apiGet(url) {
+  try {
+    const res = await fetch(`${API}${url}`, {
+      cache: "no-cache",
+      headers: { Accept: "application/json" }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    degraded = true;
+    lastError = `${url} -> ${err?.message || "fetch_failed"}`;
+    console.error("❌ API error:", lastError);
+    return null;
+  }
+}
+
+// ---------------------------
+// Extractor (idéntico a Universe)
+// ---------------------------
+function extractPredictionPayload(r) {
+  return (
+    r?.latest?.result?.prediction ||
+    r?.latest?.prediction ||
+    r?.latest?.result ||
+    null
+  );
+}
+
+function getField(r, p, key) {
+  return (
+    p?.[key] ??
+    r?.latest?.result?.[key] ??
+    r?.latest?.[key] ??
+    null
+  );
+}
+
+// ---------------------------
+// Formatters
+// ---------------------------
+function fmtReturn(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  const color = n >= 0 ? "#16a34a" : "#dc2626";
+  return `<span style="color:${color};font-weight:600">${n.toFixed(2)}%</span>`;
+}
+
+function fmtConfidence(ret) {
+  if (ret == null) return "—";
+  const n = Math.min(Math.abs(Number(ret)) / 5, 1);
+  if (Number.isNaN(n)) return "—";
+  return `${Math.round(n * 100)}%`;
+}
 
 function fmtPrice(v) {
-  if (v == null || Number.isNaN(Number(v))) return "—";
-  return `$${Number(v).toFixed(2)}`;
-}
-
-function fmtPct(v) {
-  if (v == null || Number.isNaN(Number(v))) return "—";
+  if (v == null) return "—";
   const n = Number(v);
-  const sign = n > 0 ? "+" : "";
-  return `${sign}${n.toFixed(2)}%`;
+  if (Number.isNaN(n)) return "—";
+  return `$${n.toFixed(2)}`;
 }
 
-async function fetchSignals() {
-  const url = `${API_BASE}/signals`;
-  const res = await fetch(url, {
-    cache: "no-cache",
-    headers: { Accept: "application/json" }
+function fmtRecommendation(rec) {
+  if (!rec) return "—";
+  const r = String(rec).toUpperCase();
+  if (r === "BUY") return `BUY 🔥`;
+  if (r === "SELL") return `SELL ❌`;
+  if (r === "HOLD" || r === "MANTEN") return `${rec} ⚠️`;
+  return rec;
+}
+
+// ---------------------------
+// Load Universe Chile
+// ---------------------------
+export async function loadUniverseChile(force = false) {
+  const now = Date.now();
+  if (!force && now - lastRefresh < 5 * 60 * 1000) {
+    renderUniverseChile();
+    return;
+  }
+
+  degraded = false;
+  lastError = "";
+  universe = [];
+
+  // 1️⃣ Tickers (Chile only)
+  const t = await apiGet("/dashboard/tickers");
+  const allTickers = Array.isArray(t?.tickers) ? t.tickers : [];
+  const tickers = allTickers.filter(x => typeof x === "string" && x.endsWith(".SN"));
+
+  // 2️⃣ Signals (SOLO para fundamental_flag)
+  const sig = await apiGet("/signals");
+  const signals = Array.isArray(sig?.signals) ? sig.signals : [];
+  const signalsByTicker = Object.fromEntries(
+    signals.map(s => [s.ticker, s])
+  );
+
+  // 3️⃣ Snapshots (predictions)
+  const snaps = await Promise.allSettled(
+    tickers.map(async (ticker) => {
+      const r = await apiGet(`/dashboard/latest/${ticker}`);
+      const p = extractPredictionPayload(r);
+
+      const rec = getField(r, p, "recommendation");
+      const ret = getField(r, p, "ret_ens_pct");
+      const priceNow = getField(r, p, "price_now");
+      const pricePred = getField(r, p, "price_pred");
+
+      const s = signalsByTicker[ticker];
+      const fundamentalFlag = s?.fundamental_flag ?? null;
+
+      return { ticker, rec, ret, priceNow, pricePred, fundamentalFlag };
+    })
+  );
+
+  universe = snaps.map((s, i) =>
+    s.status === "fulfilled"
+      ? s.value
+      : {
+          ticker: tickers[i],
+          rec: null,
+          ret: null,
+          priceNow: null,
+          pricePred: null,
+          fundamentalFlag: null
+        }
+  );
+
+  lastRefresh = now;
+  renderUniverseChile();
+}
+
+// ---------------------------
+// Render UI
+// ---------------------------
+function renderUniverseChile() {
+  const tbody = document.querySelector("#universe-cl-table tbody");
+  const status = document.getElementById("universe-cl-status");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  universe.forEach((u) => {
+    const tr = document.createElement("tr");
+    tr.className = "hoverable";
+    tr.innerHTML = `
+      <td class="ticker"><strong>${u.ticker}</strong></td>
+      <td class="rec">${fmtRecommendation(u.rec)}</td>
+      <td class="price-now">${fmtPrice(u.priceNow)}</td>
+      <td class="price-pred">${fmtPrice(u.pricePred)}</td>
+      <td class="confidence">${fmtConfidence(u.ret)}</td>
+      <td class="return">${fmtReturn(u.ret)}</td>
+      <td class="fundamental">${u.fundamentalFlag ?? "—"}</td>
+    `;
+
+    tr.onclick = (e) => {
+      e.preventDefault();
+      switchTab("analysis");
+      loadAnalysis(u.ticker);
+    };
+
+    tbody.appendChild(tr);
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} on ${url} | ${text.slice(0, 200)}`);
-  }
-  return await res.json();
-}
 
-export async function initUniverseChile() {
-  const table = document.querySelector("#universe-cl-table");
-  if (!table) {
-    console.warn("UniverseChile: no existe #universe-cl-table");
-    return;
-  }
-
-  const tbody = table.querySelector("tbody");
-  if (!tbody) {
-    console.warn("UniverseChile: table sin <tbody>");
-    return;
-  }
-
-  tbody.innerHTML = `<tr><td colspan="7">Cargando universo Chile…</td></tr>`;
-
-  try {
-    const data = await fetchSignals();
-
-    // ✅ 2) soporta array o data.signals/items
-    const raw = Array.isArray(data) ? data : (data?.signals || data?.items || []);
-
-    const chile = raw.filter(
-      s => typeof s?.ticker === "string" && s.ticker.endsWith(".SN")
-    );
-
-    tbody.innerHTML = "";
-
-    if (chile.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7">Sin datos de Chile (.SN)</td></tr>`;
-      return;
+  if (status) {
+    if (degraded) {
+      status.innerHTML = `⚠️ Error de backend`;
+      status.style.color = "#f59e0b";
+      console.warn("Universe Chile degraded:", lastError);
+    } else {
+      status.style.color = "";
+      status.innerHTML = `🇨🇱 Chile: <strong>${universe.length}</strong>`;
     }
-
-    for (const s of chile) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${s.ticker}</td>
-        <td>${s.recommendation ?? "—"}</td>
-        <td>${fmtPrice(s.price_now)}</td>
-        <td>${fmtPrice(s.price_pred)}</td>
-        <td>${s.quality ?? "—"}</td>
-        <td>${fmtPct(s.ret_ens_pct)}</td>
-        <td>${s.fundamental_flag ?? "—"}</td>
-      `;
-      tbody.appendChild(tr);
-    }
-  } catch (e) {
-    console.error("❌ Universe Chile error:", e);
-    tbody.innerHTML = `<tr><td colspan="7">Error cargando Chile: ${String(e.message || e)}</td></tr>`;
   }
 }
 
-export default { initUniverseChile };
+// ---------------------------
+// Init
+// ---------------------------
+export function initUniverseChile() {
+  loadUniverseChile(true);
+  setInterval(() => loadUniverseChile(true), 5 * 60 * 1000);
+}
+
+// ---------------------------
+// Estilos mínimos
+// ---------------------------
+const style = document.createElement("style");
+style.textContent = `
+  .hoverable:hover { background: #f3f4f6 !important; cursor: pointer; }
+  .ticker { font-family: "SF Mono", monospace; }
+`;
+document.head.appendChild(style);
+
+export default { initUniverseChile, loadUniverseChile };
