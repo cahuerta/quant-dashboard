@@ -21,12 +21,14 @@ export async function initScreener() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
+
     const candidates = data.candidates || [];
+    const top10Global = data.top10_global || [];
 
     meta.textContent =
       `Generado: ${data.generated_at} · ` +
       `Universe: ${data.n_universe} · ` +
-      `Candidatos: ${candidates.length} · ` +
+      `Candidatos: ${data.n_candidates ?? candidates.length} · ` +
       `IA: ${data.ia_available ? "ON" : "OFF"}`;
 
     let rows = [];
@@ -60,11 +62,7 @@ export async function initScreener() {
     // =================================================
     // 3️⃣ TOP 10 GLOBAL (SIEMPRE)
     // =================================================
-    const top10 = [...candidates]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-
-    if (!top10.length) {
+    if (!top10Global.length) {
       rows.push(`
         <tr class="muted">
           <td colspan="10">No hay datos suficientes</td>
@@ -72,7 +70,7 @@ export async function initScreener() {
       `);
     } else {
       rows.push(
-        ...top10.map((x, i) => renderRow(x, i + 1))
+        ...top10Global.map((x, i) => renderRow(x, i + 1))
       );
     }
 
