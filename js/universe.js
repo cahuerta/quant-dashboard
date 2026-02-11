@@ -1,9 +1,6 @@
 // js/universe.js
 // =====================================================
 // 🌍 UNIVERSO DEL SISTEMA (ALINEADO + MARKET CONTEXT)
-// Fuente: /dashboard/tickers
-// Fuente: /dashboard/latest/{ticker}
-// Fuente: /dashboard/market-context
 // =====================================================
 
 import { switchTab } from "./tabs.js";
@@ -14,8 +11,6 @@ const API = "https://spy-2w-price-prediction.onrender.com";
 let universe = [];
 let marketContext = null;
 let lastRefresh = 0;
-let degraded = false;
-let lastError = "";
 
 // ------------------------------------------------
 // API helper
@@ -29,9 +24,7 @@ async function apiGet(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
-    degraded = true;
-    lastError = `${url} -> ${err?.message || "fetch_failed"}`;
-    console.error("❌ API error:", lastError);
+    console.error("❌ API error:", url, err?.message);
     return null;
   }
 }
@@ -82,32 +75,37 @@ function fmtPrice(v) {
   return `$${n.toFixed(2)}`;
 }
 
+// ------------------------------------------------
+// ✅ Recomendación NORMALIZADA (ESPAÑOL)
+// ------------------------------------------------
 function fmtRecommendation(rec) {
   if (!rec) return "—";
+
   const r = String(rec).toUpperCase();
-  if (r === "BUY" || r === "COMPRA") return `BUY 🔥`;
-  if (r === "SELL" || r === "VENDE") return `SELL ❌`;
-  if (r === "HOLD" || r === "MANTEN" || r === "MANTÉN") return `HOLD ⚠️`;
+
+  if (r.includes("COMPRA")) return "🟢 COMPRA";
+  if (r.includes("VENDE")) return "🔴 VENDE";
+  if (r.includes("MANT")) return "🟡 MANTÉN";
+
   return rec;
 }
 
 // ------------------------------------------------
-// Lógica ejecución vs mercado
+// Ejecución vs mercado
 // ------------------------------------------------
 function evaluateExecution(rec) {
   if (!marketContext) return "—";
 
   const mode = marketContext.market_mode;
-
   const r = String(rec || "").toUpperCase();
 
-  if (mode === "defensive" && (r === "BUY" || r === "COMPRA"))
-    return "🚫 Bloqueado";
+  if (mode === "defensive" && r.includes("COMPRA"))
+    return "🚫 BLOQUEADO";
 
-  if (mode === "growth" && (r === "SELL" || r === "VENDE"))
-    return "⚠️ Revisar";
+  if (mode === "growth" && r.includes("VENDE"))
+    return "⚠️ REVISAR";
 
-  return "✅ Ejecutable";
+  return "✅ EJECUTAR";
 }
 
 // ------------------------------------------------
@@ -120,16 +118,13 @@ export async function loadUniverse(force = false) {
     return;
   }
 
-  degraded = false;
-  lastError = "";
   universe = [];
 
-  // 1️⃣ Market context
+  // Market context
   marketContext = await apiGet("/dashboard/market-context");
-
   renderMarketBanner();
 
-  // 2️⃣ tickers
+  // Tickers
   const t = await apiGet("/dashboard/tickers");
   const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
 
@@ -139,7 +134,7 @@ export async function loadUniverse(force = false) {
     signals.map((s) => [s.ticker, s])
   );
 
-  // 3️⃣ snapshots
+  // Snapshots
   const snaps = await Promise.allSettled(
     tickers.map(async (ticker) => {
       const r = await apiGet(`/dashboard/latest/${ticker}`);
@@ -175,7 +170,7 @@ export async function loadUniverse(force = false) {
 }
 
 // ------------------------------------------------
-// Render Market Banner
+// Render banner
 // ------------------------------------------------
 function renderMarketBanner() {
   if (!marketContext) return;
@@ -202,10 +197,9 @@ function renderUniverseTable() {
     const execution = evaluateExecution(u.rec);
 
     const tr = document.createElement("tr");
-    tr.className = "hoverable";
 
     tr.innerHTML = `
-      <td class="ticker"><strong>${u.ticker}</strong></td>
+      <td><strong>${u.ticker}</strong></td>
       <td>${fmtRecommendation(u.rec)}</td>
       <td>${fmtPrice(u.priceNow)}</td>
       <td>${fmtPrice(u.pricePred)}</td>
@@ -233,15 +227,5 @@ export function initUniverse() {
   loadUniverse(true);
   setInterval(() => loadUniverse(true), 5 * 60 * 1000);
 }
-
-// ------------------------------------------------
-// Estilos mínimos
-// ------------------------------------------------
-const style = document.createElement("style");
-style.textContent = `
-  .hoverable:hover { background: #f3f4f6 !important; cursor: pointer; }
-  .ticker { font-family: "SF Mono", monospace; }
-`;
-document.head.appendChild(style);
 
 export default { initUniverse, loadUniverse };
