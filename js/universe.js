@@ -1,6 +1,6 @@
-// js/universe.js
+// js/universe_chile.js
 // =====================================================
-// 🌍 UNIVERSO DEL SISTEMA (ALINEADO + MARKET CONTEXT)
+// 🇨🇱 UNIVERSE CHILE (IPSA) — ALINEADO + MARKET CONTEXT
 // =====================================================
 
 import { switchTab } from "./tabs.js";
@@ -11,6 +11,8 @@ const API = "https://spy-2w-price-prediction.onrender.com";
 let universe = [];
 let marketContext = null;
 let lastRefresh = 0;
+let degraded = false;
+let lastError = "";
 
 // ------------------------------------------------
 // API helper
@@ -19,12 +21,14 @@ async function apiGet(url) {
   try {
     const res = await fetch(`${API}${url}`, {
       cache: "no-cache",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json" }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error("❌ API error:", url, err?.message);
+    degraded = true;
+    lastError = `${url} -> ${err?.message || "fetch_failed"}`;
+    console.error("❌ API error:", lastError);
     return null;
   }
 }
@@ -83,15 +87,20 @@ function fmtRecommendation(rec) {
 
   const r = String(rec).toUpperCase();
 
-  if (r.includes("COMPRA")) return "🟢 COMPRA";
-  if (r.includes("VENDE")) return "🔴 VENDE";
-  if (r.includes("MANT")) return "🟡 MANTÉN";
+  if (r.includes("COMPRA") || r === "BUY")
+    return "🟢 COMPRA";
+
+  if (r.includes("VENDE") || r === "SELL")
+    return "🔴 VENDE";
+
+  if (r.includes("MANT") || r === "HOLD")
+    return "🟡 MANTÉN";
 
   return rec;
 }
 
 // ------------------------------------------------
-// Ejecución vs mercado
+// Evaluación vs mercado
 // ------------------------------------------------
 function evaluateExecution(rec) {
   if (!marketContext) return "—";
@@ -99,42 +108,48 @@ function evaluateExecution(rec) {
   const mode = marketContext.market_mode;
   const r = String(rec || "").toUpperCase();
 
-  if (mode === "defensive" && r.includes("COMPRA"))
+  if (mode === "defensive" && (r.includes("COMPRA") || r === "BUY"))
     return "🚫 BLOQUEADO";
 
-  if (mode === "growth" && r.includes("VENDE"))
+  if (mode === "growth" && (r.includes("VENDE") || r === "SELL"))
     return "⚠️ REVISAR";
 
   return "✅ EJECUTAR";
 }
 
 // ------------------------------------------------
-// Load universe
+// Load Universe Chile
 // ------------------------------------------------
-export async function loadUniverse(force = false) {
+export async function loadUniverseChile(force = false) {
   const now = Date.now();
   if (!force && now - lastRefresh < 5 * 60 * 1000) {
-    renderUniverseTable();
+    renderUniverseChile();
     return;
   }
 
+  degraded = false;
+  lastError = "";
   universe = [];
 
-  // Market context
+  // 1️⃣ Market context
   marketContext = await apiGet("/dashboard/market-context");
   renderMarketBanner();
 
-  // Tickers
+  // 2️⃣ Tickers Chile only
   const t = await apiGet("/dashboard/tickers");
-  const tickers = Array.isArray(t?.tickers) ? t.tickers : [];
+  const allTickers = Array.isArray(t?.tickers) ? t.tickers : [];
+  const tickers = allTickers.filter(
+    x => typeof x === "string" && x.endsWith(".SN")
+  );
 
+  // 3️⃣ Signals (solo fundamental_flag)
   const sig = await apiGet("/signals");
   const signals = Array.isArray(sig?.signals) ? sig.signals : [];
   const signalsByTicker = Object.fromEntries(
-    signals.map((s) => [s.ticker, s])
+    signals.map(s => [s.ticker, s])
   );
 
-  // Snapshots
+  // 4️⃣ Snapshots (predictions)
   const snaps = await Promise.allSettled(
     tickers.map(async (ticker) => {
       const r = await apiGet(`/dashboard/latest/${ticker}`);
@@ -161,23 +176,23 @@ export async function loadUniverse(force = false) {
           ret: null,
           priceNow: null,
           pricePred: null,
-          fundamentalFlag: null,
+          fundamentalFlag: null
         }
   );
 
   lastRefresh = now;
-  renderUniverseTable();
+  renderUniverseChile();
 }
 
 // ------------------------------------------------
-// Render banner
+// Render Market Banner
 // ------------------------------------------------
 function renderMarketBanner() {
   if (!marketContext) return;
 
-  const modeEl = document.getElementById("market-mode");
-  const confEl = document.getElementById("market-confidence");
-  const reasonEl = document.getElementById("market-reason");
+  const modeEl = document.getElementById("market-mode-cl");
+  const confEl = document.getElementById("market-confidence-cl");
+  const reasonEl = document.getElementById("market-reason-cl");
 
   if (modeEl) modeEl.innerText = marketContext.market_mode ?? "—";
   if (confEl) confEl.innerText = marketContext.confidence ?? "—";
@@ -185,10 +200,11 @@ function renderMarketBanner() {
 }
 
 // ------------------------------------------------
-// Render table
+// Render UI
 // ------------------------------------------------
-function renderUniverseTable() {
-  const tbody = document.querySelector("#universe-table tbody");
+function renderUniverseChile() {
+  const tbody = document.querySelector("#universe-cl-table tbody");
+  const status = document.getElementById("universe-cl-status");
   if (!tbody) return;
 
   tbody.innerHTML = "";
@@ -197,9 +213,10 @@ function renderUniverseTable() {
     const execution = evaluateExecution(u.rec);
 
     const tr = document.createElement("tr");
+    tr.className = "hoverable";
 
     tr.innerHTML = `
-      <td><strong>${u.ticker}</strong></td>
+      <td class="ticker"><strong>${u.ticker}</strong></td>
       <td>${fmtRecommendation(u.rec)}</td>
       <td>${fmtPrice(u.priceNow)}</td>
       <td>${fmtPrice(u.pricePred)}</td>
@@ -218,14 +235,25 @@ function renderUniverseTable() {
 
     tbody.appendChild(tr);
   });
+
+  if (status) {
+    if (degraded) {
+      status.innerHTML = `⚠️ Error de backend`;
+      status.style.color = "#f59e0b";
+      console.warn("Universe Chile degraded:", lastError);
+    } else {
+      status.style.color = "";
+      status.innerHTML = `🇨🇱 Chile: <strong>${universe.length}</strong>`;
+    }
+  }
 }
 
 // ------------------------------------------------
 // Init
 // ------------------------------------------------
-export function initUniverse() {
-  loadUniverse(true);
-  setInterval(() => loadUniverse(true), 5 * 60 * 1000);
+export function initUniverseChile() {
+  loadUniverseChile(true);
+  setInterval(() => loadUniverseChile(true), 5 * 60 * 1000);
 }
 
-export default { initUniverse, loadUniverse };
+export default { initUniverseChile, loadUniverseChile };
