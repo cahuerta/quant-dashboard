@@ -48,9 +48,18 @@
       font-size: 13px;
       color: #475569;
       display: flex;
-      gap: 12px;
+      gap: 16px;
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    .market-banner {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
     }
 
     .grid {
@@ -107,9 +116,7 @@
 
 <body>
 
-<!-- =========================
-     NAV
-     ========================= -->
+<!-- NAV -->
 <nav>
   <button data-tab-btn="universe" class="active">🌍 Universe</button>
   <button data-tab-btn="universe-cl">🇨🇱 Chile</button>
@@ -119,10 +126,18 @@
 </nav>
 
 <!-- =========================
-     UNIVERSE (GLOBAL)
+     UNIVERSE GLOBAL
      ========================= -->
 <section data-tab-content="universe">
   <h2>🌍 Universo de activos</h2>
+
+  <!-- 🔥 MARKET CONTEXT -->
+  <div class="market-banner">
+    <strong>Market Context:</strong>
+    <span>Modo: <strong id="market-mode">—</strong></span> |
+    <span>Confianza: <strong id="market-confidence">—</strong></span> |
+    <span>Motivo: <span id="market-reason">—</span></span>
+  </div>
 
   <table id="universe-table">
     <thead>
@@ -133,12 +148,14 @@
         <th>Precio proyectado</th>
         <th>Calidad</th>
         <th>Retorno</th>
+        <th>Mercado</th>
+        <th>Ejecución</th>
         <th>Fundamental</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td colspan="7">Cargando universo…</td>
+        <td colspan="9">Cargando universo…</td>
       </tr>
     </tbody>
   </table>
@@ -150,6 +167,13 @@
 <section data-tab-content="universe-cl">
   <h2>🇨🇱 Universo Chile (IPSA)</h2>
 
+  <!-- 🔥 MARKET CONTEXT -->
+  <div class="market-banner">
+    <strong>Market Context:</strong>
+    <span>Modo: <strong id="market-mode-cl">—</strong></span> |
+    <span>Confianza: <strong id="market-confidence-cl">—</strong></span>
+  </div>
+
   <table id="universe-cl-table">
     <thead>
       <tr>
@@ -159,12 +183,14 @@
         <th>Precio proyectado</th>
         <th>Calidad</th>
         <th>Retorno</th>
+        <th>Mercado</th>
+        <th>Ejecución</th>
         <th>Fundamental</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td colspan="7">Cargando universo Chile…</td>
+        <td colspan="9">Cargando universo Chile…</td>
       </tr>
     </tbody>
   </table>
@@ -179,7 +205,6 @@
   <div class="status-bar">
     <label for="ticker-select"><strong>Ticker</strong></label>
     <select id="ticker-select"></select>
-
     <span>Activo: <strong id="ticker-name">—</strong></span>
     <span>Fecha: <span id="date-pred">—</span></span>
   </div>
@@ -192,30 +217,8 @@
     <div class="card"><strong>Retorno esperado</strong><div id="ret">—</div></div>
   </div>
 
-  <h3>Confiabilidad del modelo</h3>
-  <div class="grid">
-    <div class="card"><strong>Qué tan bien explica el mercado</strong><div id="model-explains">—</div></div>
-    <div class="card"><strong>Error promedio del modelo</strong><div id="model-error-avg">—</div></div>
-    <div class="card"><strong>Error típico máximo</strong><div id="model-error-max">—</div></div>
-  </div>
-
-  <h3>Cómo se calculó</h3>
-  <div class="grid">
-    <div class="card"><strong>Horizonte de proyección</strong><div id="horizon">—</div></div>
-    <div class="card"><strong>Variables analizadas</strong><div id="features-used">—</div></div>
-    <div class="card"><strong>Variables realmente relevantes</strong><div id="features-effective">—</div></div>
-    <div class="card"><strong>Casos históricos comparados</strong><div id="windows-used">—</div></div>
-    <div class="card"><strong>Días de información histórica</strong><div id="rows-used">—</div></div>
-  </div>
-
   <div class="chart-card">
-      <canvas id="chart"></canvas>
-  </div>
- 
-
-  <div class="status-bar">
-    <span id="status">—</span>
-    <span id="last-update">—</span>
+    <canvas id="chart"></canvas>
   </div>
 </section>
 
@@ -276,9 +279,7 @@
   </table>
 </section>
 
-<!-- =========================
-     ENTRY POINT
-     ========================= -->
+<!-- ENTRY -->
 <script type="module">
   import "./js/tabs.js";
   import { initUniverse } from "./js/universe.js";
