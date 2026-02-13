@@ -2,6 +2,7 @@
 // =====================================================
 // 🧪 Screener Viewer (READ ONLY)
 // Fuente: /dashboard/screener
+// Adaptado al nuevo contrato del backend
 // =====================================================
 
 const API = "https://spy-2w-price-prediction.onrender.com";
@@ -22,14 +23,13 @@ export async function initScreener() {
 
     const data = await res.json();
 
-    const candidates = data.candidates || [];
-    const top10Global = data.top10_global || [];
+    const candidates = data.candidates_strict || [];
+    const topGlobal = data.top20_global || [];
 
     meta.textContent =
-      `Generado: ${data.generated_at} · ` +
-      `Universe: ${data.n_universe} · ` +
-      `Candidatos: ${data.n_candidates ?? candidates.length} · ` +
-      `IA: ${data.ia_available ? "ON" : "OFF"}`;
+      `Generado: ${data.generated_at ?? "—"} · ` +
+      `Evaluados: ${data.n_evaluated ?? 0} · ` +
+      `Candidatos: ${candidates.length}`;
 
     let rows = [];
 
@@ -49,20 +49,20 @@ export async function initScreener() {
     }
 
     // =================================================
-    // 2️⃣ SEPARADOR VISUAL
+    // 2️⃣ SEPARADOR
     // =================================================
     rows.push(`
       <tr class="separator">
         <td colspan="10">
-          <strong>Top 10 mejor score (sin filtros)</strong>
+          <strong>Top 20 mejor score (ranking global)</strong>
         </td>
       </tr>
     `);
 
     // =================================================
-    // 3️⃣ TOP 10 GLOBAL (SIEMPRE)
+    // 3️⃣ TOP GLOBAL (SIEMPRE)
     // =================================================
-    if (!top10Global.length) {
+    if (!topGlobal.length) {
       rows.push(`
         <tr class="muted">
           <td colspan="10">No hay datos suficientes</td>
@@ -70,7 +70,7 @@ export async function initScreener() {
       `);
     } else {
       rows.push(
-        ...top10Global.map((x, i) => renderRow(x, i + 1))
+        ...topGlobal.map((x, i) => renderRow(x, i + 1))
       );
     }
 
@@ -91,19 +91,15 @@ function renderRow(x, rank) {
     <tr>
       <td>${rank}</td>
       <td><strong>${x.ticker}</strong></td>
-      <td>${x.score}</td>
-      <td>${x.quality}</td>
-      <td>${x.rsi_wilder}</td>
-      <td>${x.sharpe_ratio}</td>
-      <td>${x.beta_spy}</td>
-      <td>${x.volatility}</td>
-      <td>${x.trend_3m_pct}%</td>
-      <td title="${
-        x.fundamental
-          ? `Mispricing: ${x.fundamental.mispricing_pct}% · Margin: ${x.fundamental.margin_safety_pct}%`
-          : "Sin fundamental"
-      }">
-        ${x.fundamental_flag ?? "—"}
+      <td>${x.score ?? "—"}</td>
+      <td>${x.quality ?? "—"}</td>
+      <td>${x.rsi_wilder ?? "—"}</td>
+      <td>${x.sharpe_ratio ?? "—"}</td>
+      <td>${x.beta_spy ?? "—"}</td>
+      <td>${x.volatility ?? "—"}</td>
+      <td>${x.trend_3m_pct ?? "—"}%</td>
+      <td>
+        —
       </td>
     </tr>
   `;
