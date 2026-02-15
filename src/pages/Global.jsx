@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import "../styles/global.css";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -30,52 +29,39 @@ export default function Global() {
   }, []);
 
   if (loading) {
-    return <div className="global-loading">Calculando estado global...</div>;
+    return (
+      <div className="global-loading">
+        Calculando estado global...
+      </div>
+    );
   }
 
   return (
     <div className="global-container">
 
-      {/* HEADER */}
       <div className="global-header">
-        <h1>Global System Overview</h1>
-        <div className="global-mode">
-          <span>Market Mode</span>
-          <strong>{market?.market_mode}</strong>
-        </div>
+        <h1>Quant Global Overview</h1>
       </div>
 
-      {/* KPI GRID */}
-      <div className="global-grid">
+      <div className="global-summary">
 
-        <Card
-          title="Portfolio Value"
-          value={`$${capital?.total_value ?? "—"}`}
+        <SummaryCard
+          label="Market Mode"
+          value={market?.market_mode ?? "—"}
         />
 
-        <Card
-          title="Volatility"
-          value={`${(capital?.volatility_annual * 100)?.toFixed(2)}%`}
+        <SummaryCard
+          label="Confidence"
+          value={market?.confidence ?? "—"}
         />
 
-        <Card
-          title="VaR 95%"
-          value={`${(capital?.var_95_annual * 100)?.toFixed(2)}%`}
-        />
-
-        <Card
-          title="Expected Shortfall"
-          value={`${(capital?.expected_shortfall_95_annual * 100)?.toFixed(2)}%`}
-        />
-
-        <Card
-          title="Beta vs SPY"
-          value={capital?.beta_vs_spy}
-        />
-
-        <Card
-          title="Confidence"
-          value={market?.confidence}
+        <SummaryCard
+          label="Portfolio Value"
+          value={
+            capital?.total_value
+              ? `$${capital.total_value}`
+              : "—"
+          }
         />
 
       </div>
@@ -84,11 +70,11 @@ export default function Global() {
   );
 }
 
-function Card({ title, value }) {
+function SummaryCard({ label, value }) {
   return (
-    <div className="global-card">
-      <div className="global-card-title">{title}</div>
-      <div className="global-card-value">{value ?? "—"}</div>
+    <div className="summary-card">
+      <div className="summary-label">{label}</div>
+      <div className="summary-value">{value}</div>
     </div>
   );
 }
