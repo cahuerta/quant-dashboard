@@ -211,7 +211,43 @@ a {
   font-size: 20px;
   font-weight: 600;
 }
+/* ================================
+   GLOBAL SUMMARY SIMPLE
+   ================================ */
 
+.global-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
+  margin-top: 40px;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  border: 1px solid var(--border-soft);
+  text-align: left;
+  transition: 0.2s ease;
+}
+
+.summary-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-4px);
+}
+
+.summary-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.summary-value {
+  font-size: 28px;
+  font-weight: 600;
+}
 /* =====================================================
    GRID
    ===================================================== */
