@@ -1,8 +1,7 @@
-// js/screener.js
 // =====================================================
 // 🧪 Screener Viewer (READ ONLY)
 // Fuente: /dashboard/screener
-// Adaptado al nuevo contrato del backend
+// Contrato REAL backend v3
 // =====================================================
 
 const API = "https://spy-2w-price-prediction.onrender.com";
@@ -43,7 +42,7 @@ export async function initScreener() {
     } else {
       rows.push(`
         <tr class="muted">
-          <td colspan="10">Sin candidatos (filtros estrictos)</td>
+          <td colspan="9">Sin candidatos (filtros estrictos)</td>
         </tr>
       `);
     }
@@ -53,7 +52,7 @@ export async function initScreener() {
     // =================================================
     rows.push(`
       <tr class="separator">
-        <td colspan="10">
+        <td colspan="9">
           <strong>Top 20 mejor score (ranking global)</strong>
         </td>
       </tr>
@@ -65,7 +64,7 @@ export async function initScreener() {
     if (!topGlobal.length) {
       rows.push(`
         <tr class="muted">
-          <td colspan="10">No hay datos suficientes</td>
+          <td colspan="9">No hay datos suficientes</td>
         </tr>
       `);
     } else {
@@ -78,29 +77,39 @@ export async function initScreener() {
 
   } catch (e) {
     table.innerHTML =
-      `<tr><td colspan="10">Error cargando screener</td></tr>`;
+      `<tr><td colspan="9">Error cargando screener</td></tr>`;
     console.error("Screener load error:", e);
   }
 }
 
 // =====================================================
-// Helper render fila
+// Render fila dinámica basada en contrato REAL
 // =====================================================
 function renderRow(x, rank) {
   return `
     <tr>
       <td>${rank}</td>
-      <td><strong>${x.ticker}</strong></td>
-      <td>${x.score ?? "—"}</td>
-      <td>${x.quality ?? "—"}</td>
-      <td>${x.rsi_wilder ?? "—"}</td>
-      <td>${x.sharpe_ratio ?? "—"}</td>
-      <td>${x.beta_spy ?? "—"}</td>
-      <td>${x.volatility ?? "—"}</td>
-      <td>${x.trend_3m_pct ?? "—"}%</td>
-      <td>
-        —
-      </td>
+      <td><strong>${safe(x.ticker)}</strong></td>
+      <td>${num(x.score)}</td>
+      <td>${safe(x.quality)}</td>
+      <td>${num(x.sharpe_ratio)}</td>
+      <td>${num(x.trend_3m_pct)}%</td>
+      <td>${num(x.avg_dollar_volume)}</td>
+      <td>${num(x.max_drawdown_pct)}%</td>
+      <td>${num(x.beta_spy)}</td>
     </tr>
   `;
+}
+
+// =====================================================
+// Helpers seguros
+// =====================================================
+function safe(v) {
+  return v ?? "—";
+}
+
+function num(v) {
+  if (v === undefined || v === null) return "—";
+  if (typeof v === "number") return v.toFixed(3);
+  return v;
 }
