@@ -1,3 +1,47 @@
+/* =====================================================
+   QUANT ENTERPRISE — GLOBAL STYLES FINAL
+   ===================================================== */
+
+/* ================================
+   ROOT VARIABLES
+   ================================ */
+
+:root {
+  --bg-main: #0b1220;
+  --bg-secondary: #0f172a;
+
+  --bg-card: #121a2b;
+  --bg-card-hover: #16223a;
+
+  --border-soft: rgba(255, 255, 255, 0.06);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+
+  --accent: #38bdf8;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #facc15;
+
+  --radius-xl: 22px;
+  --radius-lg: 18px;
+}
+
+/* ================================
+   BASE
+   ================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, var(--bg-main) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+}
+
 /* ================================
    LAYOUT STRUCTURE
    ================================ */
@@ -13,8 +57,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 40px;
-  background: #0b1220;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .brand {
@@ -29,7 +73,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #38bdf8;
+  background: var(--accent);
 }
 
 .nav {
@@ -39,17 +83,17 @@
 
 .nav-link {
   text-decoration: none;
-  color: #94a3b8;
+  color: var(--text-secondary);
   font-weight: 500;
   transition: 0.2s ease;
 }
 
 .nav-link:hover {
-  color: #f1f5f9;
+  color: var(--text-primary);
 }
 
 .nav-link.active {
-  color: #38bdf8;
+  color: var(--accent);
 }
 
 .header-info {
@@ -72,11 +116,11 @@
 }
 
 .status-value.neutral {
-  color: #facc15;
+  color: var(--warning);
 }
 
 .status-value.low {
-  color: #22c55e;
+  color: var(--success);
 }
 
 .main {
@@ -84,36 +128,12 @@
 }
 
 /* =====================================================
-   QUANT ENTERPRISE — GLOBAL OVERVIEW STYLE FINAL
+   GLOBAL OVERVIEW MODULE
    ===================================================== */
-
-:root {
-  --bg-main: #0b1220;
-  --bg-card: #121a2b;
-  --bg-card-hover: #16223a;
-  --border-soft: rgba(255, 255, 255, 0.06);
-
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-
-  --accent: #38bdf8;
-  --success: #22c55e;
-  --danger: #ef4444;
-  --warning: #facc15;
-
-  --radius-xl: 22px;
-  --radius-lg: 18px;
-}
-
-/* ================================
-   BASE CONTAINER
-   ================================ */
 
 .global-container {
   padding: 48px;
-  min-height: 100vh;
-  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
-  color: var(--text-primary);
+  /* ❌ NO 100vh aquí — Layout controla la altura */
 }
 
 .global-loading {
@@ -125,7 +145,7 @@
 }
 
 /* ================================
-   HEADER
+   GLOBAL HEADER
    ================================ */
 
 .global-header {
@@ -208,7 +228,7 @@
 }
 
 /* ================================
-   COLOR STATES (opcional futuro)
+   COLOR STATES
    ================================ */
 
 .value-success {
@@ -232,6 +252,10 @@
    ================================ */
 
 @media (max-width: 768px) {
+  .header {
+    padding: 16px 20px;
+  }
+
   .global-container {
     padding: 24px;
   }
