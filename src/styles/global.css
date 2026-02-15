@@ -1,6 +1,6 @@
 /* =====================================================
    QUANT ENTERPRISE — GLOBAL SYSTEM STYLES
-   Production Ready • Scalable • Modular
+   Production Ready • Stable Layout • Sticky Header Fixed
    ===================================================== */
 
 /* =====================================================
@@ -54,7 +54,11 @@ html, body {
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: linear-gradient(180deg, var(--bg-main) 0%, var(--bg-secondary) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--bg-main) 0%,
+    var(--bg-secondary) 100%
+  );
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
@@ -74,16 +78,29 @@ a {
   flex-direction: column;
 }
 
-/* ================= HEADER ================= */
+/* =====================================================
+   HEADER (FIX REAL)
+   ===================================================== */
 
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 40px;
-  background: var(--bg-main);
+
+  padding: 18px 40px;
+
+  background: rgba(11, 18, 32, 0.95);
+  backdrop-filter: blur(12px);
+
   border-bottom: 1px solid var(--border-soft);
 }
+
+/* Brand */
 
 .brand {
   font-weight: 600;
@@ -91,6 +108,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
 }
 
 .brand-dot {
@@ -100,11 +118,15 @@ a {
   background: var(--accent);
 }
 
-/* ================= NAVIGATION ================= */
+/* =====================================================
+   NAVIGATION
+   ===================================================== */
 
 .nav {
   display: flex;
   gap: 28px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .nav-link {
@@ -112,7 +134,8 @@ a {
   font-weight: 500;
   color: var(--text-secondary);
   transition: 0.2s ease;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -124,40 +147,9 @@ a {
   border-bottom: 2px solid var(--accent);
 }
 
-/* ================= STATUS AREA ================= */
-
-.header-info {
-  display: flex;
-  gap: 20px;
-}
-
-.status-item {
-  display: flex;
-  flex-direction: column;
-  font-size: 12px;
-}
-
-.status-label {
-  color: var(--text-muted);
-}
-
-.status-value {
-  font-weight: 600;
-}
-
-.status-value.neutral {
-  color: var(--warning);
-}
-
-.status-value.low {
-  color: var(--success);
-}
-
-.status-value.high {
-  color: var(--danger);
-}
-
-/* ================= MAIN ================= */
+/* =====================================================
+   MAIN CONTENT
+   ===================================================== */
 
 .main {
   flex: 1;
@@ -220,7 +212,9 @@ a {
   font-weight: 600;
 }
 
-/* ================= GRID ================= */
+/* =====================================================
+   GRID
+   ===================================================== */
 
 .global-grid {
   display: grid;
@@ -228,7 +222,9 @@ a {
   gap: 32px;
 }
 
-/* ================= CARD ================= */
+/* =====================================================
+   CARD
+   ===================================================== */
 
 .card {
   background: var(--bg-card);
@@ -258,7 +254,7 @@ a {
 }
 
 /* =====================================================
-   TABLE (Futuro Universe / Screener)
+   TABLE
    ===================================================== */
 
 .table {
@@ -322,8 +318,19 @@ a {
    ===================================================== */
 
 @media (max-width: 900px) {
+
   .header {
     padding: 16px 20px;
+  }
+
+  .nav {
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
   }
 
   .main {
@@ -351,4 +358,4 @@ a {
   .card-value {
     font-size: 22px;
   }
-   }
+}
