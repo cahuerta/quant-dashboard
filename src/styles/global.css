@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0b0f19;
+  color: #e5e7eb;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  background: #111827;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #1f2937;
+}
+
+.brand {
+  font-weight: 600;
+}
+
+.main {
+  padding: 24px;
+}
