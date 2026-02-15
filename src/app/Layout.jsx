@@ -7,84 +7,64 @@ export default function Layout({ children }) {
       {/* ================= HEADER ================= */}
       <header className="header">
 
-        {/* ===== Brand ===== */}
+        {/* Brand */}
         <div className="brand">
           <span className="brand-dot" />
           Quant Enterprise
         </div>
 
-        {/* ===== Navigation ===== */}
+        {/* Navigation */}
         <nav className="nav">
 
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Global
+          <NavLink to="/" end className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Resumen
           </NavLink>
 
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Dashboard
+          <NavLink to="/universe" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Universo
           </NavLink>
 
-          <NavLink
-            to="/universe"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Universe
+          <NavLink to="/universe-cl" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Universo Chile
           </NavLink>
 
-          <NavLink
-            to="/market"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
+          <NavLink to="/signals" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Señales
+          </NavLink>
+
+          <NavLink to="/screener" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Screener
+          </NavLink>
+
+          <NavLink to="/portfolio" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Portafolio
+          </NavLink>
+
+          <NavLink to="/risk" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
+            Risk
+          </NavLink>
+
+          <NavLink to="/market" className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }>
             Market
           </NavLink>
 
-          <NavLink
-            to="/signals"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Signals
-          </NavLink>
-
-          <NavLink
-            to="/system"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            System
-          </NavLink>
-
         </nav>
-
-        {/* ===== Market Status (placeholder real-time) ===== */}
-        <div className="header-info">
-          <div className="status-item">
-            <span className="status-label">Market</span>
-            <span className="status-value neutral">—</span>
-          </div>
-
-          <div className="status-item">
-            <span className="status-label">Risk</span>
-            <span className="status-value low">—</span>
-          </div>
-        </div>
 
       </header>
 
