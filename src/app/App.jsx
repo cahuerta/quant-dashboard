@@ -13,8 +13,9 @@ import System from "../pages/System";
 
 export default function App() {
   return (
-    <Layout>
-      <Routes>
+    <Routes>
+      {/* Layout persistente */}
+      <Route element={<Layout />}>
 
         <Route path="/" element={<Global />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -28,7 +29,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
 
-      </Routes>
-    </Layout>
+      </Route>
+    </Routes>
   );
 }
