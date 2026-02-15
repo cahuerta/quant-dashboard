@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./Layout";
 
-// Pages
 import Global from "../pages/Global";
 import Universe from "../pages/Universe";
 import Signals from "../pages/Signals";
@@ -14,9 +13,7 @@ import System from "../pages/System";
 export default function App() {
   return (
     <Routes>
-      {/* Layout persistente */}
       <Route element={<Layout />}>
-
         <Route path="/" element={<Global />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/universe" element={<Universe />} />
@@ -26,9 +23,7 @@ export default function App() {
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/risk" element={<System />} />
         <Route path="/market" element={<Market />} />
-
         <Route path="*" element={<Navigate to="/" />} />
-
       </Route>
     </Routes>
   );
