@@ -1,3 +1,88 @@
+/* ================================
+   LAYOUT STRUCTURE
+   ================================ */
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px;
+  background: #0b1220;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #38bdf8;
+}
+
+.nav {
+  display: flex;
+  gap: 24px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #94a3b8;
+  font-weight: 500;
+  transition: 0.2s ease;
+}
+
+.nav-link:hover {
+  color: #f1f5f9;
+}
+
+.nav-link.active {
+  color: #38bdf8;
+}
+
+.header-info {
+  display: flex;
+  gap: 20px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.status-label {
+  opacity: 0.5;
+}
+
+.status-value {
+  font-weight: 600;
+}
+
+.status-value.neutral {
+  color: #facc15;
+}
+
+.status-value.low {
+  color: #22c55e;
+}
+
+.main {
+  flex: 1;
+}
+
 /* =====================================================
    QUANT ENTERPRISE — GLOBAL OVERVIEW STYLE FINAL
    ===================================================== */
