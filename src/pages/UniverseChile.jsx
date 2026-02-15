@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const API = "https://spy-2w-price-prediction.onrender.com";
 
@@ -10,34 +11,37 @@ export default function UniverseChile() {
   useEffect(() => {
     async function loadUniverseChile() {
       try {
-        // 1️⃣ Tickers
+        // 1️⃣ Obtener tickers
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
         const tJson = await tRes.json();
 
         // 🔹 SOLO CHILE
-        const tickers = (tJson.tickers || [])
-          .filter(t => t.endsWith(".SN"));
+        const tickers = (tJson.tickers || []).filter((t) =>
+          t.endsWith(".SN")
+        );
 
-        // 2️⃣ Signals (solo para fundamental_flag)
+        // 2️⃣ Obtener signals (para fundamental_flag)
         const sRes = await fetch(`${API}/signals`);
         if (!sRes.ok) throw new Error("Signals error");
         const sJson = await sRes.json();
 
         const signalsMap = {};
         if (Array.isArray(sJson.signals)) {
-          sJson.signals.forEach(s => {
+          sJson.signals.forEach((s) => {
             if (!s.error) {
               signalsMap[s.ticker] = s.fundamental_flag || null;
             }
           });
         }
 
-        // 3️⃣ Latest prediction
+        // 3️⃣ Obtener latest prediction
         const results = await Promise.all(
-          tickers.map(async ticker => {
+          tickers.map(async (ticker) => {
             try {
-              const lRes = await fetch(`${API}/dashboard/latest/${ticker}`);
+              const lRes = await fetch(
+                `${API}/dashboard/latest/${ticker}`
+              );
               if (!lRes.ok) return null;
 
               const lJson = await lRes.json();
@@ -99,15 +103,35 @@ export default function UniverseChile() {
         </thead>
 
         <tbody>
-          {rows.map(r => (
+          {rows.map((r) => (
             <tr key={r.ticker}>
-              <td><strong>{r.ticker}</strong></td>
+              {/* 🔥 Click → Analysis */}
+              <td>
+                <Link
+                  to={`/analysis?ticker=${r.ticker}`}
+                  style={{
+                    color: "#38bdf8",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  {r.ticker}
+                </Link>
+              </td>
 
               <td>{r.recommendation || "—"}</td>
 
-              <td>{r.price_now != null ? Number(r.price_now).toFixed(2) : "—"}</td>
+              <td>
+                {r.price_now != null
+                  ? Number(r.price_now).toFixed(2)
+                  : "—"}
+              </td>
 
-              <td>{r.price_pred != null ? Number(r.price_pred).toFixed(2) : "—"}</td>
+              <td>
+                {r.price_pred != null
+                  ? Number(r.price_pred).toFixed(2)
+                  : "—"}
+              </td>
 
               <td
                 style={{
@@ -117,6 +141,7 @@ export default function UniverseChile() {
                       : r.ret_ens_pct < 0
                       ? "#ef4444"
                       : "#94a3b8",
+                  fontWeight: 600,
                 }}
               >
                 {r.ret_ens_pct.toFixed(2)}%
