@@ -128,4 +128,141 @@
   <div class="grid" id="summary-grid">
     <div class="card">
       <h3>Market Mode</h3>
-      <div class="value" id="market-mode">—
+      <div class="value" id="market-mode">—</div>
+    </div>
+
+    <div class="card">
+      <h3>Confidence</h3>
+      <div class="value" id="market-confidence">—</div>
+    </div>
+
+    <div class="card">
+      <h3>Portfolio Value</h3>
+      <div class="value" id="portfolio-value">—</div>
+    </div>
+
+    <div class="card">
+      <h3>Volatility</h3>
+      <div class="value" id="volatility">—</div>
+    </div>
+
+    <div class="card">
+      <h3>VaR 95%</h3>
+      <div class="value" id="var95">—</div>
+    </div>
+
+    <div class="card">
+      <h3>Expected Shortfall</h3>
+      <div class="value" id="es95">—</div>
+    </div>
+
+    <div class="card">
+      <h3>Beta vs SPY</h3>
+      <div class="value" id="beta">—</div>
+    </div>
+  </div>
+
+  <!-- DETAIL SECTION -->
+  <div id="detail-section" class="hidden">
+    <div class="section-title">📊 Portfolio Positions</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody id="positions-table">
+        <tr><td colspan="4">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const API = "https://spy-2w-price-prediction.onrender.com";
+
+function toggleDetails() {
+  document.getElementById("detail-section")
+    .classList.toggle("hidden");
+}
+
+function formatPercent(v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (isNaN(n)) return "—";
+  const cls = n > 0 ? "positive" : n < 0 ? "negative" : "neutral";
+  return `<span class="${cls}">${(n * 100).toFixed(2)}%</span>`;
+}
+
+function formatCurrency(v) {
+  if (v == null) return "—";
+  return "$" + Number(v).toLocaleString();
+}
+
+async function loadMarketContext() {
+  const res = await fetch(API + "/dashboard/market-context");
+  const data = await res.json();
+
+  document.getElementById("market-mode").innerText =
+    data.market_mode?.toUpperCase() || "—";
+
+  document.getElementById("market-confidence").innerText =
+    data.confidence ?? "—";
+}
+
+async function loadPortfolio() {
+  const res = await fetch(API + "/trading/state");
+  const data = await res.json();
+
+  const cap = data.capital_state;
+
+  document.getElementById("portfolio-value").innerText =
+    formatCurrency(cap.total_value);
+
+  document.getElementById("volatility").innerHTML =
+    formatPercent(cap.volatility_annual);
+
+  document.getElementById("var95").innerHTML =
+    formatPercent(cap.var_95_annual);
+
+  document.getElementById("es95").innerHTML =
+    formatPercent(cap.expected_shortfall_95_annual);
+
+  document.getElementById("beta").innerText =
+    cap.beta_vs_spy?.toFixed(2) ?? "—";
+
+  renderPositions(data.portfolio?.positions || []);
+}
+
+function renderPositions(positions) {
+  const tbody = document.getElementById("positions-table");
+  tbody.innerHTML = "";
+
+  if (!positions.length) {
+    tbody.innerHTML = "<tr><td colspan='4'>Sin posiciones</td></tr>";
+    return;
+  }
+
+  positions.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.ticker}</td>
+      <td>${p.qty}</td>
+      <td>$${p.price_now}</td>
+      <td>$${(p.qty * p.price_now).toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+loadMarketContext();
+loadPortfolio();
+</script>
+
+</body>
+</html>
