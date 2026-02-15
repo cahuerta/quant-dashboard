@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Screener() {
-  const [data, setData] = useState(null);
+  const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,7 +14,12 @@ export default function Screener() {
         if (!res.ok) throw new Error("Screener endpoint error");
 
         const json = await res.json();
-        setData(json);
+
+        if (!Array.isArray(json.candidates)) {
+          throw new Error("Formato inválido de screener");
+        }
+
+        setCandidates(json.candidates);
       } catch (err) {
         console.error("Screener load error:", err);
         setError("No se pudo cargar screener");
@@ -26,77 +31,52 @@ export default function Screener() {
     load();
   }, []);
 
-  const sortedCandidates = useMemo(() => {
-    if (!data || !Array.isArray(data.candidates)) return [];
+  // 🔹 Ordenados por score descendente
+  const sorted = useMemo(() => {
+    return [...candidates].sort((a, b) => {
+      const sa = Number(a.score ?? -Infinity);
+      const sb = Number(b.score ?? -Infinity);
+      return sb - sa;
+    });
+  }, [candidates]);
 
-    return [...data.candidates].sort(
-      (a, b) => (b.score || 0) - (a.score || 0)
-    );
-  }, [data]);
+  const top20 = sorted.slice(0, 20);
 
-  const top20 = sortedCandidates.slice(0, 20);
-
-  if (loading)
+  if (loading) {
     return <div className="global-loading">Cargando Screener...</div>;
+  }
 
-  if (error)
+  if (error) {
     return <div className="global-loading">{error}</div>;
+  }
 
-  if (!sortedCandidates.length)
+  if (!sorted.length) {
     return (
       <div className="global-loading">
-        No hay datos de screener disponibles.
+        No hay candidatos disponibles.
       </div>
     );
+  }
 
   return (
     <div className="global-container">
       <div className="global-header">
-        <h1>Screener</h1>
+        <h1>Screener Cuantitativo</h1>
       </div>
 
       {/* ================= TOP 20 ================= */}
-      <h2 style={{ marginBottom: 20 }}>Top 20</h2>
+      <SectionTable title="Top 20" data={top20} />
 
-      <table className="table" style={{ marginBottom: 60 }}>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Ticker</th>
-            <th>Score</th>
-            <th>RSI</th>
-            <th>Sharpe</th>
-            <th>Beta</th>
-            <th>Volatilidad</th>
-            <th>Trend 3M</th>
-          </tr>
-        </thead>
-        <tbody>
-          {top20.map((c, index) => (
-            <tr key={c.ticker || index}>
-              <td>{index + 1}</td>
-              <td><strong>{c.ticker}</strong></td>
-              <td>{c.score?.toFixed?.(2) ?? "—"}</td>
-              <td>{c.rsi?.toFixed?.(2) ?? "—"}</td>
-              <td>{c.sharpe?.toFixed?.(2) ?? "—"}</td>
-              <td>{c.beta?.toFixed?.(2) ?? "—"}</td>
-              <td>
-                {c.volatility
-                  ? (c.volatility * 100).toFixed(2) + "%"
-                  : "—"}
-              </td>
-              <td>
-                {c.trend_3m
-                  ? (c.trend_3m * 100).toFixed(2) + "%"
-                  : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* ================= TODOS ================= */}
+      <SectionTable title="Todos los candidatos" data={sorted} />
+    </div>
+  );
+}
 
-      {/* ================= TODOS LOS CANDIDATOS ================= */}
-      <h2 style={{ marginBottom: 20 }}>Todos los candidatos</h2>
+function SectionTable({ title, data }) {
+  return (
+    <div style={{ marginBottom: "60px" }}>
+      <h2 style={{ marginBottom: "20px" }}>{title}</h2>
 
       <table className="table">
         <thead>
@@ -112,7 +92,7 @@ export default function Screener() {
           </tr>
         </thead>
         <tbody>
-          {sortedCandidates.map((c, index) => (
+          {data.map((c, index) => (
             <tr key={c.ticker || index}>
               <td>{index + 1}</td>
               <td>{c.ticker}</td>
@@ -121,12 +101,12 @@ export default function Screener() {
               <td>{c.sharpe?.toFixed?.(2) ?? "—"}</td>
               <td>{c.beta?.toFixed?.(2) ?? "—"}</td>
               <td>
-                {c.volatility
+                {c.volatility != null
                   ? (c.volatility * 100).toFixed(2) + "%"
                   : "—"}
               </td>
               <td>
-                {c.trend_3m
+                {c.trend_3m != null
                   ? (c.trend_3m * 100).toFixed(2) + "%"
                   : "—"}
               </td>
@@ -136,4 +116,4 @@ export default function Screener() {
       </table>
     </div>
   );
-            }
+}
