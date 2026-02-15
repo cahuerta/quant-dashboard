@@ -3,25 +3,29 @@ import Layout from "./Layout";
 
 // Pages
 import Global from "../pages/Global";
-import Overview from "../pages/Overview";
+import Universe from "../pages/Universe";
+import Signals from "../pages/Signals";
+import Dashboard from "../pages/Dashboard";
+import Screener from "../pages/Screener";
+import Portfolio from "../pages/Portfolio";
+import Market from "../pages/Market";
+import System from "../pages/System";
 
 export default function App() {
   return (
     <Layout>
       <Routes>
 
-        {/* GLOBAL SYSTEM OVERVIEW (Landing institucional) */}
         <Route path="/" element={<Global />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/universe" element={<Universe />} />
+        <Route path="/universe-cl" element={<Universe />} />
+        <Route path="/signals" element={<Signals />} />
+        <Route path="/screener" element={<Screener />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/risk" element={<System />} />
+        <Route path="/market" element={<Market />} />
 
-        {/* DASHBOARD CUANTITATIVO */}
-        <Route path="/dashboard" element={<Overview />} />
-
-        {/* FUTURAS RUTAS (Escalable SaaS) */}
-        {/* <Route path="/portfolio" element={<Portfolio />} /> */}
-        {/* <Route path="/signals" element={<Signals />} /> */}
-        {/* <Route path="/analysis" element={<Analysis />} /> */}
-
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
 
       </Routes>
