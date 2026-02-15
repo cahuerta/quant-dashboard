@@ -1,68 +1,30 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Layout from "./Layout";
 
-export default function Layout() {
+import Global from "../pages/Global";
+import Universe from "../pages/Universe";
+import Signals from "../pages/Signals";
+import Dashboard from "../pages/Dashboard";
+import Screener from "../pages/Screener";
+import Portfolio from "../pages/Portfolio";
+import Market from "../pages/Market";
+import System from "../pages/System";
+
+export default function App() {
   return (
-    <div className="layout">
-
-      <header className="header">
-
-        <div className="brand">
-          <span className="brand-dot" />
-          Quant Enterprise
-        </div>
-
-        <nav className="nav">
-
-          <NavLink to="/" end className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Resumen
-          </NavLink>
-
-          <NavLink to="/universe" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Universo
-          </NavLink>
-
-          <NavLink to="/signals" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Señales
-          </NavLink>
-
-          <NavLink to="/screener" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Screener
-          </NavLink>
-
-          <NavLink to="/portfolio" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Portafolio
-          </NavLink>
-
-          <NavLink to="/risk" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Risk
-          </NavLink>
-
-          <NavLink to="/market" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Market
-          </NavLink>
-
-        </nav>
-
-      </header>
-
-      <main className="main">
-        <Outlet />
-      </main>
-
-    </div>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<Global />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/universe" element={<Universe />} />
+        <Route path="/universe-cl" element={<Universe />} />
+        <Route path="/signals" element={<Signals />} />
+        <Route path="/screener" element={<Screener />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/risk" element={<System />} />
+        <Route path="/market" element={<Market />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Route>
+    </Routes>
   );
 }
