@@ -1,19 +1,16 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
-export default function Layout({ children }) {
+export default function Layout() {
   return (
     <div className="layout">
 
-      {/* ================= HEADER ================= */}
       <header className="header">
 
-        {/* Brand */}
         <div className="brand">
           <span className="brand-dot" />
           Quant Enterprise
         </div>
 
-        {/* Navigation */}
         <nav className="nav">
 
           <NavLink to="/" end className={({ isActive }) =>
@@ -26,12 +23,6 @@ export default function Layout({ children }) {
             isActive ? "nav-link active" : "nav-link"
           }>
             Universo
-          </NavLink>
-
-          <NavLink to="/universe-cl" className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }>
-            Universo Chile
           </NavLink>
 
           <NavLink to="/signals" className={({ isActive }) =>
@@ -68,9 +59,8 @@ export default function Layout({ children }) {
 
       </header>
 
-      {/* ================= CONTENT ================= */}
       <main className="main">
-        {children}
+        <Outlet />
       </main>
 
     </div>
