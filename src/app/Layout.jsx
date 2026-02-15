@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-export default function Layout({ children })) {
+export default function Layout({ children }) {
   return (
     <div className="layout">
 
@@ -15,11 +15,22 @@ export default function Layout({ children })) {
 
         {/* Navigation */}
         <nav className="nav">
-          <NavLink to="/" end className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
             Global
           </NavLink>
 
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
             Dashboard
           </NavLink>
         </nav>
