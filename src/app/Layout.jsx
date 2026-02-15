@@ -25,9 +25,11 @@ export default function Layout() {
         <NavLink to="/screener" style={linkStyle}>Screener</NavLink>
         <NavLink to="/portfolio" style={linkStyle}>Portafolio</NavLink>
 
+        {/* 🔵 NUEVO BOTÓN */}
+        <NavLink to="/analysis" style={linkStyle}>Análisis</NavLink>
+
       </header>
 
-      {/* CONTENT */}
       <main style={{ padding: "40px" }}>
         <Outlet />
       </main>
