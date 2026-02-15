@@ -111,6 +111,52 @@
     [data-tab-content] {
       display: none;
     }
+
+    /* =========================
+       🧠 SYSTEM SNAPSHOT (GLOBAL)
+       ========================= */
+
+    .system-summary {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .system-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .system-card {
+      background: #111827;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .system-card strong {
+      display: block;
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .system-value {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .system-positive { color: #22c55e; }
+    .system-negative { color: #ef4444; }
+    .system-neutral  { color: #facc15; }
+
+    .summary-loading {
+      opacity: 0.6;
+    }
   </style>
 </head>
 
@@ -137,6 +183,11 @@
     <span>Modo: <strong id="market-mode">—</strong></span> |
     <span>Confianza: <strong id="market-confidence">—</strong></span> |
     <span>Motivo: <span id="market-reason">—</span></span>
+  </div>
+
+  <!-- 🧠 SYSTEM SNAPSHOT -->
+  <div id="system-summary" class="system-summary">
+    <div class="summary-loading">Calculando estado global…</div>
   </div>
 
   <table id="universe-table">
