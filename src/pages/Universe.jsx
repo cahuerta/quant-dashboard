@@ -10,46 +10,64 @@ export default function Universe() {
   useEffect(() => {
     async function loadUniverse() {
       try {
-        // 1️⃣ Obtener tickers
-        const tickersRes = await fetch(`${API}/dashboard/tickers`);
-        if (!tickersRes.ok) throw new Error("Error cargando tickers");
+        // 1️⃣ Obtener lista de tickers
+        const tRes = await fetch(`${API}/dashboard/tickers`);
+        if (!tRes.ok) throw new Error("Tickers error");
 
-        const tickersJson = await tickersRes.json();
-        const tickers = tickersJson.tickers || [];
+        const tJson = await tRes.json();
+        const tickers = tJson.tickers || [];
 
-        // 2️⃣ Obtener latest snapshot por ticker
-        const promises = tickers.map(async (ticker) => {
-          try {
-            const res = await fetch(`${API}/dashboard/latest/${ticker}`);
-            if (!res.ok) return null;
+        // 2️⃣ Obtener signals (para fundamental_flag)
+        const sRes = await fetch(`${API}/signals`);
+        if (!sRes.ok) throw new Error("Signals error");
 
-            const json = await res.json();
-            const latest = json.latest?.prediction;
+        const sJson = await sRes.json();
+        const signalsMap = {};
 
-            if (!latest) return null;
+        if (Array.isArray(sJson.signals)) {
+          sJson.signals.forEach((s) => {
+            if (!s.error) {
+              signalsMap[s.ticker] = s.fundamental_flag || null;
+            }
+          });
+        }
 
-            return {
-              ticker,
-              price_now: latest.price_now,
-              price_pred: latest.price_pred,
-              ret_ens_pct: latest.ret_ens_pct,
-              recommendation: latest.recommendation,
-              confidence: latest.confidence,
-              fundamental_flags: latest.fundamental_flags || null,
-            };
-          } catch {
-            return null;
-          }
-        });
+        // 3️⃣ Obtener latest prediction por ticker
+        const results = await Promise.all(
+          tickers.map(async (ticker) => {
+            try {
+              const lRes = await fetch(
+                `${API}/dashboard/latest/${ticker}`
+              );
+              if (!lRes.ok) return null;
 
-        const results = (await Promise.all(promises)).filter(Boolean);
+              const lJson = await lRes.json();
+              const p = lJson.latest?.prediction;
 
-        // 3️⃣ Ordenar por retorno esperado descendente
-        results.sort((a, b) => (b.ret_ens_pct || 0) - (a.ret_ens_pct || 0));
+              if (!p) return null;
 
-        setRows(results);
+              return {
+                ticker,
+                recommendation: p.recommendation,
+                price_now: p.price_now,
+                price_pred: p.price_pred,
+                ret_ens_pct: p.ret_ens_pct,
+                fundamental_flag: signalsMap[ticker] || null,
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const clean = results
+          .filter(Boolean)
+          .sort((a, b) => (b.ret_ens_pct || 0) - (a.ret_ens_pct || 0));
+
+        setRows(clean);
       } catch (err) {
-        setError(err.message);
+        console.error(err);
+        setError("No se pudo cargar Universe");
       } finally {
         setLoading(false);
       }
@@ -58,8 +76,11 @@ export default function Universe() {
     loadUniverse();
   }, []);
 
-  if (loading) return <div className="global-loading">Cargando Universe...</div>;
-  if (error) return <div className="global-loading">Error: {error}</div>;
+  if (loading)
+    return <div className="global-loading">Cargando Universe...</div>;
+
+  if (error)
+    return <div className="global-loading">{error}</div>;
 
   return (
     <div className="global-container">
@@ -71,61 +92,41 @@ export default function Universe() {
         <thead>
           <tr>
             <th>Ticker</th>
-            <th>Precio Actual</th>
-            <th>Precio Predictivo</th>
-            <th>Retorno %</th>
-            <th>Señal</th>
-            <th>Confianza</th>
+            <th>Modelo</th>
+            <th>Precio</th>
+            <th>Objetivo</th>
+            <th>Retorno</th>
             <th>Fundamental</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
               <td><strong>{r.ticker}</strong></td>
 
+              <td>{r.recommendation || "—"}</td>
+
               <td>
                 {r.price_now != null
-                  ? `$${Number(r.price_now).toFixed(2)}`
+                  ? Number(r.price_now).toFixed(2)
                   : "—"}
               </td>
 
               <td>
                 {r.price_pred != null
-                  ? `$${Number(r.price_pred).toFixed(2)}`
+                  ? Number(r.price_pred).toFixed(2)
                   : "—"}
               </td>
 
-              <td
-                style={{
-                  color:
-                    r.ret_ens_pct > 0
-                      ? "#22c55e"
-                      : r.ret_ens_pct < 0
-                      ? "#ef4444"
-                      : "#94a3b8",
-                  fontWeight: 600,
-                }}
-              >
+              <td>
                 {r.ret_ens_pct != null
-                  ? (r.ret_ens_pct * 100).toFixed(2) + "%"
+                  ? r.ret_ens_pct.toFixed(2) + "%"
                   : "—"}
               </td>
 
               <td>
-                <span className={`badge ${badgeFromSignal(r.recommendation)}`}>
-                  {r.recommendation || "—"}
-                </span>
-              </td>
-
-              <td>
-                {r.confidence != null
-                  ? (r.confidence * 100).toFixed(0) + "%"
-                  : "—"}
-              </td>
-
-              <td>
-                {renderFundamental(r.fundamental_flags)}
+                {r.fundamental_flag || "—"}
               </td>
             </tr>
           ))}
@@ -134,36 +135,3 @@ export default function Universe() {
     </div>
   );
 }
-
-// ========================
-// Helpers
-// ========================
-
-function badgeFromSignal(signal) {
-  if (!signal) return "";
-
-  const s = signal.toLowerCase();
-
-  if (s.includes("comprar") || s.includes("buy")) return "badge-success";
-  if (s.includes("vender") || s.includes("sell")) return "badge-danger";
-  if (s.includes("mantener") || s.includes("hold")) return "badge-warning";
-
-  return "badge-accent";
-}
-
-function renderFundamental(flags) {
-  if (!flags) return "—";
-
-  if (Array.isArray(flags)) {
-    return flags.join(", ");
-  }
-
-  if (typeof flags === "object") {
-    return Object.entries(flags)
-      .filter(([_, v]) => v === true)
-      .map(([k]) => k)
-      .join(", ");
-  }
-
-  return String(flags);
-                        }
