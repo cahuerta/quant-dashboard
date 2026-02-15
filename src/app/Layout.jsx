@@ -7,14 +7,15 @@ export default function Layout({ children }) {
       {/* ================= HEADER ================= */}
       <header className="header">
 
-        {/* Brand */}
+        {/* ===== Brand ===== */}
         <div className="brand">
           <span className="brand-dot" />
           Quant Enterprise
         </div>
 
-        {/* Navigation */}
+        {/* ===== Navigation ===== */}
         <nav className="nav">
+
           <NavLink
             to="/"
             end
@@ -33,18 +34,55 @@ export default function Layout({ children }) {
           >
             Dashboard
           </NavLink>
+
+          <NavLink
+            to="/universe"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Universe
+          </NavLink>
+
+          <NavLink
+            to="/market"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Market
+          </NavLink>
+
+          <NavLink
+            to="/signals"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Signals
+          </NavLink>
+
+          <NavLink
+            to="/system"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            System
+          </NavLink>
+
         </nav>
 
-        {/* Market Status */}
+        {/* ===== Market Status (placeholder real-time) ===== */}
         <div className="header-info">
           <div className="status-item">
             <span className="status-label">Market</span>
-            <span className="status-value neutral">Neutral</span>
+            <span className="status-value neutral">—</span>
           </div>
 
           <div className="status-item">
             <span className="status-label">Risk</span>
-            <span className="status-value low">Low</span>
+            <span className="status-value low">—</span>
           </div>
         </div>
 
