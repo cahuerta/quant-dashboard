@@ -10,39 +10,34 @@ export default function UniverseChile() {
   useEffect(() => {
     async function loadUniverseChile() {
       try {
-        // 1️⃣ Obtener tickers
+        // 1️⃣ Tickers
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
-
         const tJson = await tRes.json();
 
-        // 🔹 Filtrar solo Chile (.SN)
-        const tickers = (tJson.tickers || []).filter(t =>
-          t.endsWith(".SN")
-        );
+        // 🔹 SOLO CHILE
+        const tickers = (tJson.tickers || [])
+          .filter(t => t.endsWith(".SN"));
 
-        // 2️⃣ Obtener signals
+        // 2️⃣ Signals (solo para fundamental_flag)
         const sRes = await fetch(`${API}/signals`);
         if (!sRes.ok) throw new Error("Signals error");
-
         const sJson = await sRes.json();
-        const signalsMap = {};
 
+        const signalsMap = {};
         if (Array.isArray(sJson.signals)) {
-          sJson.signals.forEach((s) => {
+          sJson.signals.forEach(s => {
             if (!s.error) {
               signalsMap[s.ticker] = s.fundamental_flag || null;
             }
           });
         }
 
-        // 3️⃣ Latest prediction por ticker
+        // 3️⃣ Latest prediction
         const results = await Promise.all(
-          tickers.map(async (ticker) => {
+          tickers.map(async ticker => {
             try {
-              const lRes = await fetch(
-                `${API}/dashboard/latest/${ticker}`
-              );
+              const lRes = await fetch(`${API}/dashboard/latest/${ticker}`);
               if (!lRes.ok) return null;
 
               const lJson = await lRes.json();
@@ -54,7 +49,7 @@ export default function UniverseChile() {
                 recommendation: p.recommendation,
                 price_now: p.price_now,
                 price_pred: p.price_pred,
-                ret_ens_pct: p.ret_ens_pct,
+                ret_ens_pct: p.ret_ens_pct ?? 0,
                 fundamental_flag: signalsMap[ticker] || null,
               };
             } catch {
@@ -65,7 +60,7 @@ export default function UniverseChile() {
 
         const clean = results
           .filter(Boolean)
-          .sort((a, b) => (b.ret_ens_pct || 0) - (a.ret_ens_pct || 0));
+          .sort((a, b) => b.ret_ens_pct - a.ret_ens_pct);
 
         setRows(clean);
       } catch (err) {
@@ -104,23 +99,15 @@ export default function UniverseChile() {
         </thead>
 
         <tbody>
-          {rows.map((r) => (
+          {rows.map(r => (
             <tr key={r.ticker}>
               <td><strong>{r.ticker}</strong></td>
 
               <td>{r.recommendation || "—"}</td>
 
-              <td>
-                {r.price_now != null
-                  ? Number(r.price_now).toFixed(2)
-                  : "—"}
-              </td>
+              <td>{r.price_now != null ? Number(r.price_now).toFixed(2) : "—"}</td>
 
-              <td>
-                {r.price_pred != null
-                  ? Number(r.price_pred).toFixed(2)
-                  : "—"}
-              </td>
+              <td>{r.price_pred != null ? Number(r.price_pred).toFixed(2) : "—"}</td>
 
               <td
                 style={{
@@ -132,9 +119,7 @@ export default function UniverseChile() {
                       : "#94a3b8",
                 }}
               >
-                {r.ret_ens_pct != null
-                  ? r.ret_ens_pct.toFixed(2) + "%"
-                  : "—"}
+                {r.ret_ens_pct.toFixed(2)}%
               </td>
 
               <td>{r.fundamental_flag || "—"}</td>
