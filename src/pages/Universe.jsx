@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const API = "https://spy-2w-price-prediction.onrender.com";
 
@@ -103,7 +104,19 @@ export default function Universe() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              <td><strong>{r.ticker}</strong></td>
+              {/* 🔥 Click → Analysis */}
+              <td>
+                <Link
+                  to={`/analysis?ticker=${r.ticker}`}
+                  style={{
+                    color: "#38bdf8",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  {r.ticker}
+                </Link>
+              </td>
 
               <td>{r.recommendation || "—"}</td>
 
@@ -119,15 +132,24 @@ export default function Universe() {
                   : "—"}
               </td>
 
-              <td>
+              {/* 🎯 Retorno coloreado */}
+              <td
+                style={{
+                  color:
+                    r.ret_ens_pct > 0
+                      ? "#22c55e"
+                      : r.ret_ens_pct < 0
+                      ? "#ef4444"
+                      : "#94a3b8",
+                  fontWeight: 600,
+                }}
+              >
                 {r.ret_ens_pct != null
                   ? r.ret_ens_pct.toFixed(2) + "%"
                   : "—"}
               </td>
 
-              <td>
-                {r.fundamental_flag || "—"}
-              </td>
+              <td>{r.fundamental_flag || "—"}</td>
             </tr>
           ))}
         </tbody>
