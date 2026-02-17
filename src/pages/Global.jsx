@@ -35,6 +35,7 @@ export default function Global() {
         const marketJson = await marketRes.json();
         const perfJson = await perfRes.json();
 
+        // ✅ Guardamos JSON completo (no rompemos nada)
         setMarket(marketJson);
         setPerf(perfJson);
       } catch (e) {
@@ -58,8 +59,8 @@ export default function Global() {
       </div>
 
       <div className="global-summary">
+        {/* ✅ SOLO 4 OBJETIVOS */}
 
-        {/* MARKET */}
         <SummaryCard
           label="Market Mode"
           value={market?.market_mode?.toUpperCase() ?? "—"}
@@ -74,30 +75,11 @@ export default function Global() {
           }
         />
 
-        {/* PERFORMANCE */}
-        <SummaryCard
-          label="Equity"
-          value={
-            perf?.equity != null
-              ? `$${Number(perf.equity).toLocaleString()}`
-              : "—"
-          }
-        />
-
         <SummaryCard
           label="Total Return (%)"
           value={
             perf?.total_return_pct != null
               ? `${perf.total_return_pct}%`
-              : "—"
-          }
-        />
-
-        <SummaryCard
-          label="High Water Mark"
-          value={
-            perf?.high_water_mark != null
-              ? `$${Number(perf.high_water_mark).toLocaleString()}`
               : "—"
           }
         />
@@ -110,7 +92,6 @@ export default function Global() {
               : "—"
           }
         />
-
       </div>
     </div>
   );
