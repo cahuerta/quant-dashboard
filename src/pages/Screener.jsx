@@ -11,25 +11,29 @@ export default function Screener() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API}/dashboard/screener`);
-        if (!res.ok) throw new Error("Screener endpoint error");
+        const res = await fetch(`${API}/dashboard/screener`, {
+          cache: "no-store"
+        });
+
+        if (!res.ok) throw new Error("Error endpoint Screener");
 
         const json = await res.json();
 
         setStrict(
-          (json.candidates_strict || []).sort(
-            (a, b) => b.score - a.score
-          )
+          (json.candidates_strict || [])
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 15)
         );
 
         setTop20(
-          (json.top20_global || []).sort(
-            (a, b) => b.score - a.score
-          )
+          (json.top20_global || [])
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 20)
         );
+
       } catch (err) {
         console.error(err);
-        setError("No se pudo cargar screener");
+        setError("No se pudo cargar Screener");
       } finally {
         setLoading(false);
       }
@@ -50,56 +54,52 @@ export default function Screener() {
         <h1>Screener</h1>
       </div>
 
-      {/* ================= CANDIDATOS STRICT ================= */}
-      <Section title="Candidatos Strict" data={strict} />
-
-      {/* ================= TOP 20 GLOBAL ================= */}
-      <Section title="Top 20 Global" data={top20} />
+      <Section title="🔥 Alta Convicción (Strict)" data={strict} />
+      <Section title="🌎 Top 20 Global" data={top20} />
     </div>
   );
 }
 
 function Section({ title, data }) {
   if (!data.length) {
-    return (
-      <div className="global-loading">
-        No hay datos para {title}
-      </div>
-    );
+    return <div className="global-loading">Sin datos para {title}</div>;
   }
 
   return (
     <>
-      <h2 style={{ marginTop: 50 }}>{title}</h2>
+      <h2 style={{ marginTop: 40 }}>{title}</h2>
 
-      <table className="table">
+      <table className="table screener-table">
         <thead>
           <tr>
             <th>#</th>
-            <th>Ticker</th>
+            <th>Activo</th>
             <th>Score</th>
-            <th>Quality</th>
-            <th>Trend 3M</th>
-            <th>RSI</th>
+            <th>Tendencia 3M</th>
             <th>Sharpe</th>
-            <th>Volatilidad</th>
-            <th>Drawdown</th>
+            <th>RSI</th>
+            <th>Drawdown Máx</th>
           </tr>
         </thead>
         <tbody>
           {data.map((c, index) => (
             <tr key={`${c.ticker}-${index}`}>
               <td>{index + 1}</td>
-              <td>{c.ticker}</td>
+              <td><strong>{c.ticker}</strong></td>
               <td>{c.score?.toFixed(3)}</td>
-              <td>{c.quality}</td>
               <td>{c.trend_3m_pct?.toFixed(2)}%</td>
-              <td>{c.rsi_wilder?.toFixed(1)}</td>
               <td>{c.sharpe_ratio?.toFixed(2)}</td>
-              <td>
-                {c.volatility
-                  ? (c.volatility * 100).toFixed(2) + "%"
-                  : "—"}
+              <td
+                style={{
+                  color:
+                    c.rsi_wilder > 70
+                      ? "#ff5c5c"
+                      : c.rsi_wilder < 30
+                      ? "#4cd964"
+                      : "inherit"
+                }}
+              >
+                {c.rsi_wilder?.toFixed(1)}
               </td>
               <td>{c.max_drawdown_pct?.toFixed(2)}%</td>
             </tr>
@@ -108,4 +108,4 @@ function Section({ title, data }) {
       </table>
     </>
   );
-              }
+}
