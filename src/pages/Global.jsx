@@ -3,17 +3,17 @@ import { useEffect, useState } from "react";
 const API = import.meta.env.VITE_API_URL;
 
 export default function Global() {
-  const [market, setMarket] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API}/dashboard/market-context`);
+        const res = await fetch(`${API}/dashboard/performance`);
         const json = await res.json();
-        setMarket(json);
+        setData(json);
       } catch (e) {
-        console.error("Global load error", e);
+        console.error("Performance load error", e);
       } finally {
         setLoading(false);
       }
@@ -23,39 +23,45 @@ export default function Global() {
   }, []);
 
   if (loading) {
-    return <div className="global-loading">Loading summary...</div>;
+    return <div className="global-loading">Loading performance...</div>;
   }
 
   return (
     <div className="global-container">
       <div className="global-header">
-        <h1>Quant Global Overview</h1>
+        <h1>Global Performance</h1>
       </div>
 
       <div className="global-summary">
 
         <SummaryCard
-          label="Market Mode"
-          value={market?.market_mode ?? "—"}
+          label="Equity"
+          value={`$${data?.equity?.toLocaleString() ?? "—"}`}
         />
 
         <SummaryCard
-          label="Confidence"
+          label="Total Return"
           value={
-            market?.confidence != null
-              ? `${(market.confidence * 100).toFixed(1)}%`
+            data?.total_return_pct != null
+              ? `${data.total_return_pct}%`
               : "—"
           }
+          positive={data?.total_return_pct >= 0}
         />
 
         <SummaryCard
-          label="Reason"
-          value={market?.reason ?? "—"}
+          label="Drawdown"
+          value={
+            data?.drawdown_pct != null
+              ? `${data.drawdown_pct}%`
+              : "—"
+          }
+          negative={data?.drawdown_pct < 0}
         />
 
         <SummaryCard
-          label="Last Update"
-          value={formatDate(market?.timestamp)}
+          label="High Water Mark"
+          value={`$${data?.high_water_mark?.toLocaleString() ?? "—"}`}
         />
 
       </div>
@@ -63,20 +69,16 @@ export default function Global() {
   );
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, positive, negative }) {
+  let className = "summary-card";
+
+  if (positive) className += " positive";
+  if (negative) className += " negative";
+
   return (
-    <div className="summary-card">
+    <div className={className}>
       <div className="summary-label">{label}</div>
       <div className="summary-value">{value}</div>
     </div>
   );
-}
-
-function formatDate(d) {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleString();
-  } catch {
-    return "—";
-  }
 }
