@@ -13,31 +13,42 @@ export default function Global() {
       try {
         setError(null);
 
-        const [marketRes, perfRes] = await Promise.all([
-          fetch(`${API}/dashboard/market-context`, {
-            cache: "no-store",
-            headers: { Accept: "application/json" },
-          }),
-          fetch(`${API}/dashboard/performance`, {
-            cache: "no-store",
-            headers: { Accept: "application/json" },
-          }),
-        ]);
+        const marketPromise = fetch(`${API}/dashboard/market-context`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
 
+        const perfPromise = fetch(`${API}/dashboard/performance`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+
+        const marketRes = await marketPromise;
+
+        // 🔥 MARKET ES CRÍTICO
         if (!marketRes.ok) {
           throw new Error(`Market HTTP ${marketRes.status}`);
         }
 
-        if (!perfRes.ok) {
-          throw new Error(`Performance HTTP ${perfRes.status}`);
+        const marketJson = await marketRes.json();
+        setMarket(marketJson);
+
+        // 🔥 PERFORMANCE NO ES CRÍTICO
+        try {
+          const perfRes = await perfPromise;
+
+          if (perfRes.ok) {
+            const perfJson = await perfRes.json();
+            setPerf(perfJson);
+          } else {
+            console.warn("Performance endpoint failed:", perfRes.status);
+            setPerf(null);
+          }
+        } catch (err) {
+          console.warn("Performance fetch error:", err);
+          setPerf(null);
         }
 
-        const marketJson = await marketRes.json();
-        const perfJson = await perfRes.json();
-
-        // ✅ Guardamos JSON completo (no rompemos nada)
-        setMarket(marketJson);
-        setPerf(perfJson);
       } catch (e) {
         console.error("Global load error:", e);
         setError(e.message || "Error");
@@ -49,8 +60,11 @@ export default function Global() {
     load();
   }, []);
 
-  if (loading) return <div className="global-loading">Loading...</div>;
-  if (error) return <div className="global-error">{error}</div>;
+  if (loading)
+    return <div className="global-loading">Loading...</div>;
+
+  if (error)
+    return <div className="global-error">{error}</div>;
 
   return (
     <div className="global-container">
@@ -59,13 +73,14 @@ export default function Global() {
       </div>
 
       <div className="global-summary">
-        {/* ✅ SOLO 4 OBJETIVOS */}
 
+        {/* 1️⃣ MARKET MODE */}
         <SummaryCard
           label="Market Mode"
           value={market?.market_mode?.toUpperCase() ?? "—"}
         />
 
+        {/* 2️⃣ REGIME STRENGTH */}
         <SummaryCard
           label="Regime Strength"
           value={
@@ -75,6 +90,7 @@ export default function Global() {
           }
         />
 
+        {/* 3️⃣ TOTAL RETURN */}
         <SummaryCard
           label="Total Return (%)"
           value={
@@ -84,6 +100,7 @@ export default function Global() {
           }
         />
 
+        {/* 4️⃣ DRAWDOWN */}
         <SummaryCard
           label="Drawdown (%)"
           value={
@@ -92,6 +109,7 @@ export default function Global() {
               : "—"
           }
         />
+
       </div>
     </div>
   );
