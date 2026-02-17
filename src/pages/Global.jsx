@@ -4,20 +4,14 @@ const API = import.meta.env.VITE_API_URL;
 
 export default function Global() {
   const [market, setMarket] = useState(null);
-  const [pipeline, setPipeline] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const m = await fetch(`${API}/dashboard/market-context`);
-        const p = await fetch(`${API}/internal/pipeline/last`);
-
-        const marketJson = await m.json();
-        const pipelineJson = await p.json();
-
-        setMarket(marketJson);
-        setPipeline(pipelineJson);
+        const res = await fetch(`${API}/dashboard/market-context`);
+        const json = await res.json();
+        setMarket(json);
       } catch (e) {
         console.error("Global load error", e);
       } finally {
@@ -31,11 +25,6 @@ export default function Global() {
   if (loading) {
     return <div className="global-loading">Loading summary...</div>;
   }
-
-  const lastRun =
-    pipeline?.timestamp ??
-    pipeline?.generated_at ??
-    "—";
 
   return (
     <div className="global-container">
@@ -60,8 +49,13 @@ export default function Global() {
         />
 
         <SummaryCard
-          label="Last Pipeline Run"
-          value={formatDate(lastRun)}
+          label="Reason"
+          value={market?.reason ?? "—"}
+        />
+
+        <SummaryCard
+          label="Last Update"
+          value={formatDate(market?.timestamp)}
         />
 
       </div>
@@ -79,7 +73,7 @@ function SummaryCard({ label, value }) {
 }
 
 function formatDate(d) {
-  if (!d || d === "—") return "—";
+  if (!d) return "—";
   try {
     return new Date(d).toLocaleString();
   } catch {
