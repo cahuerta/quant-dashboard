@@ -1,10 +1,10 @@
 /* =====================================================
-   QUANT ENTERPRISE — GLOBAL SYSTEM STYLES
-   Production Ready • Stable Layout • Sticky Header Fixed
+   QUANT ENTERPRISE — SYSTEM UI v2
+   Premium Layout • Desktop + Mobile Optimized
    ===================================================== */
 
 /* =====================================================
-   ROOT VARIABLES
+   ROOT
    ===================================================== */
 
 :root {
@@ -13,7 +13,7 @@
   --bg-tertiary: #111827;
 
   --bg-card: #121a2b;
-  --bg-card-hover: #16223a;
+  --bg-card-hover: #182338;
 
   --border-soft: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.12);
@@ -34,11 +34,11 @@
   --radius-md: 14px;
   --radius-sm: 8px;
 
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 12px 35px rgba(0, 0, 0, 0.35);
 }
 
 /* =====================================================
-   BASE RESET
+   BASE
    ===================================================== */
 
 *,
@@ -69,7 +69,7 @@ a {
 }
 
 /* =====================================================
-   LAYOUT STRUCTURE
+   LAYOUT
    ===================================================== */
 
 .layout {
@@ -78,8 +78,13 @@ a {
   flex-direction: column;
 }
 
+.main {
+  flex: 1;
+  padding: 48px;
+}
+
 /* =====================================================
-   HEADER (FIX REAL)
+   HEADER ENTERPRISE
    ===================================================== */
 
 .header {
@@ -87,17 +92,15 @@ a {
   top: 0;
   z-index: 1000;
 
-  width: 100%;
+  background: rgba(11, 18, 32, 0.95);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-soft);
+
   display: flex;
   align-items: center;
   justify-content: space-between;
 
   padding: 18px 40px;
-
-  background: rgba(11, 18, 32, 0.95);
-  backdrop-filter: blur(12px);
-
-  border-bottom: 1px solid var(--border-soft);
 }
 
 /* Brand */
@@ -107,8 +110,7 @@ a {
   font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  white-space: nowrap;
+  gap: 12px;
 }
 
 .brand-dot {
@@ -116,26 +118,29 @@ a {
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
 }
 
 /* =====================================================
-   NAVIGATION
+   NAV DESKTOP
    ===================================================== */
 
 .nav {
   display: flex;
-  gap: 28px;
+  gap: 32px;
   align-items: center;
-  flex-wrap: wrap;
 }
 
 .nav-link {
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
   transition: 0.2s ease;
-  padding-bottom: 6px;
-  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -144,34 +149,19 @@ a {
 
 .nav-link.active {
   color: var(--accent);
-  border-bottom: 2px solid var(--accent);
+}
+
+.nav-icon {
+  font-size: 18px;
 }
 
 /* =====================================================
-   MAIN CONTENT
-   ===================================================== */
-
-.main {
-  flex: 1;
-  padding: 48px;
-}
-
-/* =====================================================
-   GLOBAL MODULE (Resumen)
+   GLOBAL MODULE
    ===================================================== */
 
 .global-container {
   width: 100%;
 }
-
-.global-loading {
-  padding: 80px 0;
-  text-align: center;
-  font-size: 16px;
-  color: var(--text-muted);
-}
-
-/* ================= HEADER ================= */
 
 .global-header {
   display: flex;
@@ -186,34 +176,16 @@ a {
   letter-spacing: -0.5px;
 }
 
-/* ================= MODE CARD ================= */
-
-.global-mode {
-  background: rgba(18, 26, 43, 0.85);
-  backdrop-filter: blur(14px);
-  padding: 20px 28px;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border-soft);
+.global-loading {
+  padding: 80px 0;
   text-align: center;
-  min-width: 180px;
+  font-size: 16px;
+  color: var(--text-muted);
 }
 
-.global-mode span {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.global-mode strong {
-  font-size: 20px;
-  font-weight: 600;
-}
-/* ================================
-   GLOBAL SUMMARY SIMPLE
-   ================================ */
+/* =====================================================
+   SUMMARY CARDS
+   ===================================================== */
 
 .global-summary {
   display: grid;
@@ -227,35 +199,26 @@ a {
   border-radius: var(--radius-lg);
   padding: 36px;
   border: 1px solid var(--border-soft);
-  text-align: left;
-  transition: 0.2s ease;
+  transition: 0.25s ease;
 }
 
 .summary-card:hover {
   background: var(--bg-card-hover);
-  transform: translateY(-4px);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-soft);
 }
 
 .summary-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .summary-value {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 600;
-}
-/* =====================================================
-   GRID
-   ===================================================== */
-
-.global-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 32px;
 }
 
 /* =====================================================
@@ -268,6 +231,7 @@ a {
   padding: 28px;
   border: 1px solid var(--border-soft);
   transition: all 0.25s ease;
+  margin-bottom: 32px;
 }
 
 .card:hover {
@@ -276,16 +240,35 @@ a {
   box-shadow: var(--shadow-soft);
 }
 
-.card-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+.card h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
 }
 
-.card-value {
-  font-size: 26px;
+/* =====================================================
+   GRID UTILITIES
+   ===================================================== */
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 24px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.metric-value {
+  font-size: 22px;
   font-weight: 600;
 }
 
@@ -319,11 +302,27 @@ a {
 }
 
 /* =====================================================
+   MINI CHART
+   ===================================================== */
+
+.mini-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 140px;
+  gap: 4px;
+}
+
+.bar {
+  flex: 1;
+  border-radius: 3px;
+}
+
+/* =====================================================
    BADGES
    ===================================================== */
 
 .badge {
-  padding: 4px 10px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -350,23 +349,31 @@ a {
 }
 
 /* =====================================================
-   RESPONSIVE
+   MOBILE MODE (ENTERPRISE)
    ===================================================== */
 
 @media (max-width: 900px) {
 
   .header {
+    flex-direction: column;
+    gap: 16px;
     padding: 16px 20px;
   }
 
+  /* NAV en 2 filas */
   .nav {
-    gap: 16px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    width: 100%;
   }
 
-  .nav::-webkit-scrollbar {
-    display: none;
+  .nav-link {
+    font-size: 11px;
+  }
+
+  .nav-icon {
+    font-size: 20px;
   }
 
   .main {
@@ -383,15 +390,16 @@ a {
     font-size: 24px;
   }
 
-  .global-grid {
-    gap: 20px;
+  .summary-card {
+    padding: 24px;
+  }
+
+  .summary-value {
+    font-size: 22px;
   }
 
   .card {
     padding: 22px;
   }
 
-  .card-value {
-    font-size: 22px;
-  }
 }
