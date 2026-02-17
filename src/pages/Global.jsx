@@ -4,20 +4,20 @@ const API = import.meta.env.VITE_API_URL;
 
 export default function Global() {
   const [market, setMarket] = useState(null);
-  const [positions, setPositions] = useState([]);
+  const [pipeline, setPipeline] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
         const m = await fetch(`${API}/dashboard/market-context`);
-        const pos = await fetch(`/api/internal-proxy`);
+        const p = await fetch(`${API}/internal/pipeline/last`);
 
         const marketJson = await m.json();
-        const positionsJson = await pos.json();
+        const pipelineJson = await p.json();
 
         setMarket(marketJson);
-        setPositions(Array.isArray(positionsJson) ? positionsJson : []);
+        setPipeline(pipelineJson);
       } catch (e) {
         console.error("Global load error", e);
       } finally {
@@ -29,13 +29,13 @@ export default function Global() {
   }, []);
 
   if (loading) {
-    return <div className="global-loading">Loading global state...</div>;
+    return <div className="global-loading">Loading summary...</div>;
   }
 
-  const portfolioValue = positions.reduce(
-    (acc, p) => acc + (p.market_value || 0),
-    0
-  );
+  const lastRun =
+    pipeline?.timestamp ??
+    pipeline?.generated_at ??
+    "—";
 
   return (
     <div className="global-container">
@@ -44,6 +44,7 @@ export default function Global() {
       </div>
 
       <div className="global-summary">
+
         <SummaryCard
           label="Market Mode"
           value={market?.market_mode ?? "—"}
@@ -59,18 +60,10 @@ export default function Global() {
         />
 
         <SummaryCard
-          label="Positions"
-          value={positions.length}
+          label="Last Pipeline Run"
+          value={formatDate(lastRun)}
         />
 
-        <SummaryCard
-          label="Portfolio Value"
-          value={
-            portfolioValue
-              ? `$${portfolioValue.toLocaleString()}`
-              : "—"
-          }
-        />
       </div>
     </div>
   );
@@ -83,4 +76,13 @@ function SummaryCard({ label, value }) {
       <div className="summary-value">{value}</div>
     </div>
   );
+}
+
+function formatDate(d) {
+  if (!d || d === "—") return "—";
+  try {
+    return new Date(d).toLocaleString();
+  } catch {
+    return "—";
+  }
 }
