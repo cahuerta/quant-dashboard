@@ -2,35 +2,61 @@ import { NavLink, Outlet } from "react-router-dom";
 
 export default function Layout() {
   return (
-    <div style={{ minHeight: "100vh", background: "#0b1220", color: "white" }}>
+    <div className="layout">
 
-      {/* NAV BAR */}
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          display: "flex",
-          gap: "24px",
-          padding: "18px 40px",
-          background: "#111827",
-          borderBottom: "1px solid rgba(255,255,255,0.08)"
-        }}
-      >
+      {/* HEADER */}
+      <header className="header">
 
-        <NavLink to="/" style={linkStyle}>Resumen</NavLink>
-        <NavLink to="/universe" style={linkStyle}>Universo</NavLink>
-        <NavLink to="/universe-cl" style={linkStyle}>Universo Chile</NavLink>
-        <NavLink to="/signals" style={linkStyle}>Signals</NavLink>
-        <NavLink to="/screener" style={linkStyle}>Screener</NavLink>
-        <NavLink to="/portfolio" style={linkStyle}>Portafolio</NavLink>
+        {/* BRAND */}
+        <div className="brand">
+          <div className="brand-dot" />
+          Quant Enterprise
+        </div>
 
-        {/* 🔵 NUEVO BOTÓN */}
-        <NavLink to="/analysis" style={linkStyle}>Análisis</NavLink>
+        {/* NAV */}
+        <nav className="nav">
+
+          <NavLink to="/" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">📊</span>
+            Resumen
+          </NavLink>
+
+          <NavLink to="/universe" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">🌍</span>
+            Universo
+          </NavLink>
+
+          <NavLink to="/universe-cl" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">🇨🇱</span>
+            Chile
+          </NavLink>
+
+          <NavLink to="/signals" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">📡</span>
+            Signals
+          </NavLink>
+
+          <NavLink to="/screener" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">🔎</span>
+            Screener
+          </NavLink>
+
+          <NavLink to="/portfolio" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">💼</span>
+            Portafolio
+          </NavLink>
+
+          <NavLink to="/analysis" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">📈</span>
+            Análisis
+          </NavLink>
+
+        </nav>
 
       </header>
 
-      <main style={{ padding: "40px" }}>
+      {/* MAIN */}
+      <main className="main">
         <Outlet />
       </main>
 
@@ -38,8 +64,6 @@ export default function Layout() {
   );
 }
 
-const linkStyle = ({ isActive }) => ({
-  color: isActive ? "#38bdf8" : "#cbd5e1",
-  textDecoration: "none",
-  fontWeight: 500
-});
+function navClass(isActive) {
+  return isActive ? "nav-link active" : "nav-link";
+}
