@@ -1,74 +1,160 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-const API = "https://spy-2w-price-prediction.onrender.com";
+const API = import.meta.env.VITE_API_URL;
+const PIPELINE_KEY = import.meta.env.VITE_PIPELINE_KEY;
 
+// =========================
+// helpers UI
+// =========================
+function colorRetorno(v) {
+  if (v == null) return "#94a3b8";
+  return v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : "#94a3b8";
+}
+
+function colorAlpha(a) {
+  if (a == null) return "#94a3b8";
+  if (a >= 0.70) return "#16a34a";   // alta
+  if (a >= 0.55) return "#eab308";   // media
+  return "#ef4444";                 // baja
+}
+
+function colorConf(c) {
+  if (c == null) return "#94a3b8";
+  if (c >= 0.75) return "#16a34a";  // alta
+  if (c >= 0.50) return "#eab308";  // media
+  return "#ef4444";                // baja
+}
+
+function isExecutableByBroker(ticker) {
+  return ticker && !ticker.toUpperCase().endsWith(".SN"); // broker bloquea .SN
+}
+
+// =========================
+// component
+// =========================
 export default function Universe() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!API) {
+      setError("Falta VITE_API_URL en el frontend");
+      setLoading(false);
+      return;
+    }
+
     async function loadUniverse() {
+      setLoading(true);
+      setError(null);
+
       try {
-        // 1️⃣ Obtener lista de tickers
-        const tRes = await fetch(`${API}/dashboard/tickers`);
-        if (!tRes.ok) throw new Error("Tickers error");
+        // 1) tickers
+        const tRes = await fetch(`${API}/dashboard/tickers`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!tRes.ok) throw new Error(`Tickers HTTP ${tRes.status}`);
+        const tickers = (await tRes.json()).tickers || [];
 
-        const tJson = await tRes.json();
-        const tickers = tJson.tickers || [];
+        // 2) alpha snapshot
+        const aRes = await fetch(`${API}/alpha`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        const alphaJson = aRes.ok ? await aRes.json() : {};
+        const alphaMap = alphaJson?.results || {};
 
-        // 2️⃣ Obtener signals (para fundamental_flag)
-        const sRes = await fetch(`${API}/signals`);
-        if (!sRes.ok) throw new Error("Signals error");
-
-        const sJson = await sRes.json();
+        // 3) signals (confianza)
+        const sRes = await fetch(`${API}/signals`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        const sJson = sRes.ok ? await sRes.json() : {};
         const signalsMap = {};
-
         if (Array.isArray(sJson.signals)) {
           sJson.signals.forEach((s) => {
-            if (!s.error) {
-              signalsMap[s.ticker] = s.fundamental_flag || null;
+            if (!s?.error && s?.ticker) {
+              signalsMap[s.ticker] = {
+                confidence: s.confidence ?? null,
+                // si quieres mostrar calidad del modelo desde signals, queda listo:
+                model_ok: s.model_ok ?? null,
+                acceptance: s.acceptance ?? s.model_acceptance ?? null,
+              };
             }
           });
         }
 
-        // 3️⃣ Obtener latest prediction por ticker
-        const results = await Promise.all(
+        // 4) posiciones (protegido)
+        let positions = {};
+        if (PIPELINE_KEY) {
+          const pRes = await fetch(`${API}/internal/positions`, {
+            cache: "no-store",
+            headers: {
+              Accept: "application/json",
+              "X-PIPELINE-KEY": PIPELINE_KEY,
+            },
+          });
+          positions = pRes.ok ? await pRes.json() : {};
+        } else {
+          // sin key: no rompe, solo queda en 0
+          positions = {};
+        }
+
+        // 5) latest por ticker (N llamadas)
+        const settled = await Promise.allSettled(
           tickers.map(async (ticker) => {
+            const out = {
+              ticker,
+              retorno: null,
+              alpha: alphaMap?.[ticker]?.alpha_score ?? null,
+              confidence: signalsMap?.[ticker]?.confidence ?? null,
+              positionValue: positions?.[ticker]?.market_value ?? 0,
+              executable: false,
+            };
+
             try {
-              const lRes = await fetch(
-                `${API}/dashboard/latest/${ticker}`
-              );
-              if (!lRes.ok) return null;
+              const lRes = await fetch(`${API}/dashboard/latest/${ticker}`, {
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+              });
 
-              const lJson = await lRes.json();
-              const p = lJson.latest?.prediction;
-
-              if (!p) return null;
-
-              return {
-                ticker,
-                recommendation: p.recommendation,
-                price_now: p.price_now,
-                price_pred: p.price_pred,
-                ret_ens_pct: p.ret_ens_pct,
-                fundamental_flag: signalsMap[ticker] || null,
-              };
-            } catch {
-              return null;
+              if (lRes.ok) {
+                const lJson = await lRes.json();
+                const pred = lJson?.latest?.prediction;
+                out.retorno = pred?.ret_ens_pct ?? null; // retorno del modelo
+              } else {
+                // latest falló: dejamos retorno en null, pero no botamos la tabla
+                console.warn(`latest ${ticker} HTTP ${lRes.status}`);
+              }
+            } catch (e) {
+              console.warn(`latest ${ticker} fail`, e);
             }
+
+            // ejecutable (aprox) = pasa broker + umbrales
+            out.executable =
+              isExecutableByBroker(ticker) &&
+              out.alpha != null &&
+              out.alpha >= 0.55 &&
+              out.confidence != null &&
+              out.confidence >= 0.5;
+
+            return out;
           })
         );
 
-        const clean = results
-          .filter(Boolean)
-          .sort((a, b) => (b.ret_ens_pct || 0) - (a.ret_ens_pct || 0));
+        const list = settled
+          .map((r) => (r.status === "fulfilled" ? r.value : null))
+          .filter(Boolean);
 
-        setRows(clean);
-      } catch (err) {
-        console.error(err);
-        setError("No se pudo cargar Universe");
+        // orden: alpha desc, null al final
+        list.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
+
+        setRows(list);
+      } catch (e) {
+        console.error("Universe load error:", e);
+        setError(e.message || "No se pudo cargar Universe");
       } finally {
         setLoading(false);
       }
@@ -77,83 +163,88 @@ export default function Universe() {
     loadUniverse();
   }, []);
 
-  if (loading)
-    return <div className="global-loading">Cargando Universe...</div>;
+  const subtitle = useMemo(() => {
+    const n = rows.length;
+    const exec = rows.filter((r) => r.executable).length;
+    return n ? `Activos: ${n} | Ejecutables: ${exec}` : "";
+  }, [rows]);
 
-  if (error)
-    return <div className="global-loading">{error}</div>;
+  if (loading) return <div className="global-loading">Cargando Universo...</div>;
+  if (error) return <div className="global-loading">{error}</div>;
 
   return (
     <div className="global-container">
       <div className="global-header">
-        <h1>Universe</h1>
+        <div>
+          <h1>Universo</h1>
+          <div style={{ color: "#94a3b8", marginTop: 6 }}>{subtitle}</div>
+        </div>
       </div>
 
       <table className="table">
         <thead>
           <tr>
-            <th>Ticker</th>
-            <th>Modelo</th>
-            <th>Precio</th>
-            <th>Objetivo</th>
             <th>Retorno</th>
-            <th>Fundamental</th>
+            <th>Alfa</th>
+            <th>Confianza</th>
+            <th>Posición</th>
+            <th>Ejecutable</th>
+            <th>Activo</th>
           </tr>
         </thead>
 
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              {/* 🔥 Click → Analysis */}
+              {/* 1) Retorno */}
+              <td style={{ color: colorRetorno(r.retorno), fontWeight: 700 }}>
+                {r.retorno != null ? `${r.retorno.toFixed(2)}%` : "—"}
+              </td>
+
+              {/* 2) Alpha */}
+              <td style={{ color: colorAlpha(r.alpha), fontWeight: 800 }}>
+                {r.alpha != null ? r.alpha.toFixed(3) : "—"}
+              </td>
+
+              {/* 3) Confianza */}
+              <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
+                {r.confidence != null ? r.confidence.toFixed(2) : "—"}
+              </td>
+
+              {/* 4) Posición */}
+              <td style={{ fontWeight: 600 }}>
+                {r.positionValue > 0 ? `$${Number(r.positionValue).toFixed(0)}` : "—"}
+              </td>
+
+              {/* 5) Ejecutable */}
+              <td style={{ fontWeight: 800 }}>
+                {r.executable ? "✅" : "❌"}
+              </td>
+
+              {/* Activo (link) */}
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
-                  style={{
-                    color: "#38bdf8",
-                    textDecoration: "none",
-                    fontWeight: 600,
-                  }}
+                  style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}
                 >
                   {r.ticker}
                 </Link>
+                {!isExecutableByBroker(r.ticker) && (
+                  <div style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>
+                    No ejecutable (.SN)
+                  </div>
+                )}
               </td>
-
-              <td>{r.recommendation || "—"}</td>
-
-              <td>
-                {r.price_now != null
-                  ? Number(r.price_now).toFixed(2)
-                  : "—"}
-              </td>
-
-              <td>
-                {r.price_pred != null
-                  ? Number(r.price_pred).toFixed(2)
-                  : "—"}
-              </td>
-
-              {/* 🎯 Retorno coloreado */}
-              <td
-                style={{
-                  color:
-                    r.ret_ens_pct > 0
-                      ? "#22c55e"
-                      : r.ret_ens_pct < 0
-                      ? "#ef4444"
-                      : "#94a3b8",
-                  fontWeight: 600,
-                }}
-              >
-                {r.ret_ens_pct != null
-                  ? r.ret_ens_pct.toFixed(2) + "%"
-                  : "—"}
-              </td>
-
-              <td>{r.fundamental_flag || "—"}</td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {!PIPELINE_KEY && (
+        <div style={{ marginTop: 14, color: "#eab308", fontWeight: 600 }}>
+          ⚠️ Sin VITE_PIPELINE_KEY: la columna “Posición” queda en “—”.
+        </div>
+      )}
     </div>
   );
 }
