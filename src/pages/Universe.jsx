@@ -26,9 +26,25 @@ function colorConf(c) {
   return "#ef4444";
 }
 
+// =========================
+// 🧠 TRADUCCIÓN RECHAZOS
+// =========================
+const REASON_TEXT = {
+  alpha_below_threshold: "Alpha bajo umbral",
+  expected_shortfall_block: "Bloqueado por ES95",
+  volatility_block: "Volatilidad extrema",
+  beta_defensive_block: "Beta alto en modo defensivo",
+};
+
+function humanReason(r) {
+  return REASON_TEXT[r] || r;
+}
+
+// =========================
+// COMPONENT
+// =========================
 export default function Universe() {
   const [rows, setRows] = useState([]);
-  const [execMap, setExecMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,17 +60,17 @@ export default function Universe() {
         setLoading(true);
         setError(null);
 
-        // 1️⃣ Tickers
+        // 1️⃣ TICKERS
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
         const tickers = (await tRes.json()).tickers || [];
 
-        // 2️⃣ Alpha snapshot
+        // 2️⃣ ALPHA SNAPSHOT
         const aRes = await fetch(`${API}/alpha`);
         const alphaJson = aRes.ok ? await aRes.json() : {};
         const alphaMap = alphaJson?.results || {};
 
-        // 3️⃣ Signals (confianza)
+        // 3️⃣ SIGNALS
         const sRes = await fetch(`${API}/signals`);
         const sJson = sRes.ok ? await sRes.json() : {};
         const signalsMap = {};
@@ -67,7 +83,7 @@ export default function Universe() {
           });
         }
 
-        // 4️⃣ Posiciones
+        // 4️⃣ POSICIONES
         let positions = {};
         if (PIPELINE_KEY) {
           const pRes = await fetch(`${API}/internal/positions`, {
@@ -76,13 +92,12 @@ export default function Universe() {
           positions = pRes.ok ? await pRes.json() : {};
         }
 
-        // 5️⃣ Ejecutabilidad REAL (backend)
-        const eRes = await fetch(`${API}/executability-preview`);
+        // 5️⃣ EJECUTABILIDAD REAL
+        const eRes = await fetch(`${API}/dashboard/executability-preview`);
         const eJson = eRes.ok ? await eRes.json() : {};
         const execResults = eJson?.results || {};
-        setExecMap(execResults);
 
-        // 6️⃣ Latest
+        // 6️⃣ LATEST
         const results = await Promise.all(
           tickers.map(async (ticker) => {
             let retorno = null;
@@ -96,6 +111,8 @@ export default function Universe() {
               }
             } catch {}
 
+            const execInfo = execResults?.[ticker] || {};
+
             return {
               ticker,
               retorno,
@@ -103,14 +120,13 @@ export default function Universe() {
               confidence: signalsMap?.[ticker] ?? null,
               positionValue:
                 positions?.[ticker]?.market_value ?? 0,
-              executable: execResults?.[ticker]?.executable ?? false,
-              rejectReasons:
-                execResults?.[ticker]?.reasons ?? [],
+              executable: execInfo?.executable ?? false,
+              rejectReason: execInfo?.reason ?? null,
             };
           })
         );
 
-        // 🔥 Orden real por Alpha
+        // 🔥 ORDEN REAL POR ALPHA
         results.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
 
         setRows(results);
@@ -157,7 +173,7 @@ export default function Universe() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              {/* 1️⃣ ACTIVO PRIMERO */}
+              {/* 1️⃣ ACTIVO */}
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
@@ -170,7 +186,7 @@ export default function Universe() {
                   {r.ticker}
                 </Link>
 
-                {!r.executable && r.rejectReasons.length > 0 && (
+                {!r.executable && r.rejectReason && (
                   <div
                     style={{
                       fontSize: 11,
@@ -178,7 +194,7 @@ export default function Universe() {
                       marginTop: 4,
                     }}
                   >
-                    {r.rejectReasons.join(", ")}
+                    {humanReason(r.rejectReason)}
                   </div>
                 )}
               </td>
