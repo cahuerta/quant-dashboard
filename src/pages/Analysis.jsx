@@ -1,79 +1,66 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-const API = "https://spy-2w-price-prediction.onrender.com";
+const API = import.meta.env.VITE_API_URL;
 
-export default function Analisis() {
+export default function Analysis() {
+
   const [searchParams] = useSearchParams();
   const queryTicker = searchParams.get("ticker");
 
   const [ticker, setTicker] = useState(queryTicker || "");
-  const [activos, setActivos] = useState([]);
+  const [tickers, setTickers] = useState([]);
 
-  const [latest, setLatest] = useState(null);
-  const [resumenHistorico, setResumenHistorico] = useState(null);
-  const [senal, setSenal] = useState(null);
+  const [meta, setMeta] = useState(null);
+  const [prediction, setPrediction] = useState(null);
+  const [historical, setHistorical] = useState(null);
 
   const [loading, setLoading] = useState(false);
 
-  // =========================
-  // Cargar lista de activos
-  // =========================
+  // ===============================
+  // Cargar tickers
+  // ===============================
   useEffect(() => {
     async function loadTickers() {
-      try {
-        const res = await fetch(`${API}/dashboard/tickers`);
-        const json = await res.json();
-        setActivos(json.tickers || []);
-      } catch (err) {
-        console.error("Error cargando activos:", err);
-      }
+      const res = await fetch(`${API}/dashboard/tickers`);
+      const json = await res.json();
+      setTickers(json?.tickers || []);
     }
     loadTickers();
   }, []);
 
-  // =========================
-  // Cargar datos análisis
-  // =========================
+  // ===============================
+  // Cargar análisis completo
+  // ===============================
   useEffect(() => {
     if (!ticker) return;
 
     async function loadData() {
       setLoading(true);
 
-      try {
-        const [latestRes, summaryRes, signalsRes] = await Promise.all([
-          fetch(`${API}/dashboard/latest/${ticker}`),
-          fetch(`${API}/dashboard/predictions/summary?ticker=${ticker}&limit=60`),
-          fetch(`${API}/signals`)
-        ]);
+      const res = await fetch(`${API}/dashboard/latest/${ticker}`);
+      const json = res.ok ? await res.json() : null;
 
-        const latestJson = latestRes.ok ? await latestRes.json() : null;
-        const summaryJson = summaryRes.ok ? await summaryRes.json() : null;
-        const signalsJson = signalsRes.ok ? await signalsRes.json() : null;
+      const last = json?.latest;
 
-        const signalData = signalsJson?.signals?.find(
-          s => s.ticker === ticker && !s.error
-        );
+      setMeta(last?.meta || null);
+      setPrediction(last?.prediction || null);
+      setHistorical(last?.historical || null);
 
-        setLatest(latestJson?.latest || null);
-        setResumenHistorico(summaryJson?.data || null);
-        setSenal(signalData || null);
-      } catch (err) {
-        console.error("Error cargando análisis:", err);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     }
 
     loadData();
   }, [ticker]);
 
+  // ===============================
+  // UI
+  // ===============================
   return (
     <div className="global-container">
 
       <div className="global-header">
-        <h1>Análisis del Activo</h1>
+        <h1>Análisis Enterprise</h1>
 
         <select
           value={ticker}
@@ -81,129 +68,134 @@ export default function Analisis() {
           className="selector"
         >
           <option value="">Seleccionar activo</option>
-          {activos.map(a => (
-            <option key={a} value={a}>{a}</option>
+          {tickers.map(t => (
+            <option key={t} value={t}>{t}</option>
           ))}
         </select>
       </div>
 
-      {loading && <div className="global-loading">Cargando análisis...</div>}
+      {loading && <div className="global-loading">Cargando...</div>}
 
-      {!loading && ticker && latest && (
+      {!loading && prediction && (
         <>
-          <ResumenEjecutivo latest={latest} senal={senal} />
-          {resumenHistorico && <GraficoRetornos data={resumenHistorico} />}
-          <CalidadModelo latest={latest} />
+          <BloquePrediccion prediction={prediction} />
+          <BloqueModelo historical={historical} />
+          <BloqueConfiguracion meta={meta} />
         </>
       )}
     </div>
   );
 }
 
-///////////////////////////////////////////////////////////
-// 📌 RESUMEN EJECUTIVO
-///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// 🔥 BLOQUE PREDICCIÓN
+////////////////////////////////////////////////////////////
 
-function ResumenEjecutivo({ latest, senal }) {
+function BloquePrediccion({ prediction }) {
 
-  const colorRecomendacion =
-    latest?.recommendation === "COMPRA"
+  const color =
+    prediction.recommendation === "COMPRA"
       ? "#22c55e"
-      : latest?.recommendation === "VENTA"
+      : prediction.recommendation === "VENTA"
       ? "#ef4444"
-      : "#eab308";
+      : "#facc15";
 
   return (
     <div className="card">
-      <h2>Resumen Ejecutivo</h2>
+      <h2>Predicción Actual</h2>
 
-      <div className="grid-4">
+      <div className="grid-3">
+
+        <Metric label="Fecha Base" value={prediction.date_base} />
 
         <Metric
           label="Precio Actual"
-          value={
-            latest?.price_now != null
-              ? `$${latest.price_now.toFixed(2)}`
-              : "—"
-          }
+          value={formatMoney(prediction.price_now)}
         />
 
         <Metric
-          label="Precio Estimado (10 días)"
-          value={
-            latest?.price_pred != null
-              ? `$${latest.price_pred.toFixed(2)}`
-              : "—"
-          }
+          label="Precio Estimado"
+          value={formatMoney(prediction.price_pred)}
         />
 
         <Metric
-          label="Retorno Esperado"
-          value={
-            latest?.ret_ens_pct != null
-              ? `${latest.ret_ens_pct.toFixed(2)}%`
-              : "—"
-          }
+          label="Retorno Ensamble"
+          value={formatPct(prediction.ret_ens_pct)}
+        />
+
+        <Metric
+          label="Alpha (Modelo Global)"
+          value={formatPct(prediction.ret_global_pct)}
+        />
+
+        <Metric
+          label="KNN"
+          value={formatPct(prediction.ret_knn_pct)}
         />
 
         <Metric
           label="Recomendación"
-          value={latest?.recommendation || "—"}
-          color={colorRecomendacion}
+          value={prediction.recommendation}
+          color={color}
         />
 
-        {senal && (
-          <Metric
-            label="Fuerza de Señal"
-            value={
-              senal?.signal_strength != null
-                ? senal.signal_strength.toFixed(3)
-                : "—"
-            }
-          />
-        )}
+        <Metric
+          label="Dimensiones PCA"
+          value={prediction.pca_dims_effective}
+        />
+
+        <Metric
+          label="N° Features"
+          value={prediction.n_features}
+        />
 
       </div>
     </div>
   );
 }
 
-///////////////////////////////////////////////////////////
-// 📊 CALIDAD DEL MODELO
-///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// 🔥 BLOQUE MODELO
+////////////////////////////////////////////////////////////
 
-function CalidadModelo({ latest }) {
+function BloqueModelo({ historical }) {
+
+  if (!historical) return null;
+
   return (
     <div className="card">
-      <h2>Calidad del Modelo</h2>
+      <h2>Calidad Histórica del Modelo</h2>
 
       <div className="grid-3">
 
         <Metric
           label="Tasa de Acierto"
-          value={
-            latest?.historical?.hit_rate_mean != null
-              ? (latest.historical.hit_rate_mean * 100).toFixed(1) + "%"
-              : "—"
-          }
+          value={formatPct(historical.hit_rate_mean * 100, true)}
         />
 
         <Metric
           label="Error Medio (MAE)"
-          value={
-            latest?.historical?.mae_mean != null
-              ? latest.historical.mae_mean.toFixed(4)
-              : "—"
-          }
+          value={historical.mae_mean?.toFixed(4)}
         />
 
         <Metric
           label="Error Cuadrático (RMSE)"
-          value={
-            latest?.historical?.rmse_mean != null
-              ? latest.historical.rmse_mean.toFixed(4)
-              : "—"
-          }
+          value={historical.rmse_mean?.toFixed(4)}
+        />
+
+        <Metric
+          label="Ventanas Analizadas"
+          value={historical.n_windows}
+        />
+
+        <Metric
+          label="Dimensiones PCA"
+          value={historical.pca_dims}
+        />
+
+        <Metric
+          label="Features"
+          value={historical.n_features}
         />
 
       </div>
@@ -211,44 +203,35 @@ function CalidadModelo({ latest }) {
   );
 }
 
-///////////////////////////////////////////////////////////
-// 📈 GRÁFICO SIMPLE DE RETORNOS
-///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// 🔥 BLOQUE CONFIGURACIÓN MODELO
+////////////////////////////////////////////////////////////
 
-function GraficoRetornos({ data }) {
+function BloqueConfiguracion({ meta }) {
 
-  const valores = data.slice(-30).map(d => d.ret_ens_pct);
-
-  const max = Math.max(...valores);
-  const min = Math.min(...valores);
-  const rango = max - min || 1;
+  if (!meta) return null;
 
   return (
     <div className="card">
-      <h2>Retornos Estimados Recientes</h2>
+      <h2>Configuración del Modelo</h2>
 
-      <div className="mini-chart">
-        {valores.map((v, i) => {
-          const altura = ((v - min) / rango) * 100;
-          return (
-            <div
-              key={i}
-              className="bar"
-              style={{
-                height: `${altura}%`,
-                background: v >= 0 ? "#22c55e" : "#ef4444"
-              }}
-            />
-          );
-        })}
+      <div className="grid-3">
+
+        <Metric label="Horizonte (días)" value={meta.horizon_days} />
+        <Metric label="Theta" value={meta.theta} />
+        <Metric label="Vecinos KNN" value={meta.k_neighbors} />
+        <Metric label="Alpha" value={meta.alpha} />
+        <Metric label="PCA Target" value={meta.pca_target} />
+        <Metric label="Periodo Histórico" value={meta.period} />
+
       </div>
     </div>
   );
 }
 
-///////////////////////////////////////////////////////////
-// 🔹 MÉTRICA SIMPLE
-///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+// COMPONENTE MÉTRICA
+////////////////////////////////////////////////////////////
 
 function Metric({ label, value, color }) {
   return (
@@ -260,3 +243,17 @@ function Metric({ label, value, color }) {
     </div>
   );
 }
+
+////////////////////////////////////////////////////////////
+// HELPERS
+////////////////////////////////////////////////////////////
+
+function formatMoney(v) {
+  if (v == null) return "—";
+  return "$" + v.toFixed(2);
+}
+
+function formatPct(v, alreadyPct = false) {
+  if (v == null) return "—";
+  return (alreadyPct ? v.toFixed(1) : (v * 100).toFixed(2)) + "%";
+          }
