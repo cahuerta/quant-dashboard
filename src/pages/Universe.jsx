@@ -26,15 +26,9 @@ function colorConf(c) {
   return "#ef4444";
 }
 
-function isExecutableByBroker(ticker) {
-  return ticker && !ticker.toUpperCase().endsWith(".SN");
-}
-
-// =========================
-// COMPONENT
-// =========================
 export default function Universe() {
   const [rows, setRows] = useState([]);
+  const [execMap, setExecMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -50,17 +44,17 @@ export default function Universe() {
         setLoading(true);
         setError(null);
 
-        // 1️⃣ TICKERS
+        // 1️⃣ Tickers
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
         const tickers = (await tRes.json()).tickers || [];
 
-        // 2️⃣ ALPHA SNAPSHOT
+        // 2️⃣ Alpha snapshot
         const aRes = await fetch(`${API}/alpha`);
         const alphaJson = aRes.ok ? await aRes.json() : {};
         const alphaMap = alphaJson?.results || {};
 
-        // 3️⃣ SIGNALS (confianza)
+        // 3️⃣ Signals (confianza)
         const sRes = await fetch(`${API}/signals`);
         const sJson = sRes.ok ? await sRes.json() : {};
         const signalsMap = {};
@@ -73,7 +67,7 @@ export default function Universe() {
           });
         }
 
-        // 4️⃣ POSICIONES
+        // 4️⃣ Posiciones
         let positions = {};
         if (PIPELINE_KEY) {
           const pRes = await fetch(`${API}/internal/positions`, {
@@ -82,7 +76,13 @@ export default function Universe() {
           positions = pRes.ok ? await pRes.json() : {};
         }
 
-        // 5️⃣ LATEST
+        // 5️⃣ Ejecutabilidad REAL (backend)
+        const eRes = await fetch(`${API}/executability-preview`);
+        const eJson = eRes.ok ? await eRes.json() : {};
+        const execResults = eJson?.results || {};
+        setExecMap(execResults);
+
+        // 6️⃣ Latest
         const results = await Promise.all(
           tickers.map(async (ticker) => {
             let retorno = null;
@@ -96,30 +96,21 @@ export default function Universe() {
               }
             } catch {}
 
-            const alpha = alphaMap?.[ticker]?.alpha_score ?? null;
-            const confidence = signalsMap?.[ticker] ?? null;
-            const positionValue =
-              positions?.[ticker]?.market_value ?? 0;
-
-            const executable =
-              isExecutableByBroker(ticker) &&
-              alpha != null &&
-              alpha >= 0.55 &&
-              confidence != null &&
-              confidence >= 0.5;
-
             return {
               ticker,
               retorno,
-              alpha,
-              confidence,
-              positionValue,
-              executable,
+              alpha: alphaMap?.[ticker]?.alpha_score ?? null,
+              confidence: signalsMap?.[ticker] ?? null,
+              positionValue:
+                positions?.[ticker]?.market_value ?? 0,
+              executable: execResults?.[ticker]?.executable ?? false,
+              rejectReasons:
+                execResults?.[ticker]?.reasons ?? [],
             };
           })
         );
 
-        // 🔥 ORDEN POR ALPHA REAL
+        // 🔥 Orden real por Alpha
         results.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
 
         setRows(results);
@@ -166,7 +157,7 @@ export default function Universe() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              {/* 1️⃣ NOMBRE PRIMERO */}
+              {/* 1️⃣ ACTIVO PRIMERO */}
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
@@ -178,6 +169,18 @@ export default function Universe() {
                 >
                   {r.ticker}
                 </Link>
+
+                {!r.executable && r.rejectReasons.length > 0 && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#ef4444",
+                      marginTop: 4,
+                    }}
+                  >
+                    {r.rejectReasons.join(", ")}
+                  </div>
+                )}
               </td>
 
               <td style={{ color: colorRetorno(r.retorno), fontWeight: 700 }}>
@@ -217,4 +220,4 @@ export default function Universe() {
       )}
     </div>
   );
-          }
+}
