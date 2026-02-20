@@ -164,9 +164,12 @@ function BloqueModelo({ historical }) {
     hit >= 50 ? "#eab308" :
     "#ef4444";
 
+  const mae = historical.mae_mean ?? null;
+
   const colorMae =
-    historical.mae_mean < 0.03 ? "#22c55e" :
-    historical.mae_mean < 0.06 ? "#eab308" :
+    mae == null ? "#94a3b8" :
+    mae < 0.03 ? "#22c55e" :
+    mae < 0.06 ? "#eab308" :
     "#ef4444";
 
   return (
@@ -184,7 +187,7 @@ function BloqueModelo({ historical }) {
 
         <Metric
           label="Error Medio (MAE)"
-          value={historical.mae_mean?.toFixed(4)}
+          value={mae?.toFixed(4)}
           color={colorMae}
         />
 
@@ -230,7 +233,7 @@ function BloqueConfiguracion({ meta }) {
 }
 
 ////////////////////////////////////////////////////////////
-// COMPONENTE MÉTRICA MEJORADO
+// COMPONENTE MÉTRICA
 ////////////////////////////////////////////////////////////
 
 function Metric({ label, value, color, strong }) {
@@ -252,15 +255,23 @@ function Metric({ label, value, color, strong }) {
 }
 
 ////////////////////////////////////////////////////////////
-// HELPERS
+// HELPERS CORREGIDOS
 ////////////////////////////////////////////////////////////
 
 function formatMoney(v) {
   if (v == null) return "—";
-  return "$" + v.toFixed(2);
+  return "$" + Number(v).toFixed(2);
 }
 
 function formatPct(v) {
   if (v == null) return "—";
-  return (v * 100).toFixed(2) + "%";
+
+  const value = Number(v);
+
+  // Protección contra valores absurdos
+  if (value < -100 || value > 300) {
+    return "⚠ dato anómalo";
+  }
+
+  return value.toFixed(2) + "%";
 }
