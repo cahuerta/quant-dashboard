@@ -2,6 +2,48 @@ import { useEffect, useState } from "react";
 
 const API = import.meta.env.VITE_API_URL;
 
+// =========================
+// 🎨 COLORES INTELIGENTES
+// =========================
+function colorScore(v) {
+  if (v == null) return "#94a3b8";
+  if (v >= 0.75) return "#16a34a"; // top
+  if (v >= 0.70) return "#22c55e";
+  if (v >= 0.55) return "#eab308";
+  return "#ef4444";
+}
+
+function colorMomentum(v) {
+  if (v == null) return "#94a3b8";
+  if (v >= 15) return "#22c55e";
+  if (v >= 5) return "#eab308";
+  return "#ef4444";
+}
+
+function colorSharpe(v) {
+  if (v == null) return "#94a3b8";
+  if (v >= 2) return "#22c55e";
+  if (v >= 1) return "#eab308";
+  return "#ef4444";
+}
+
+function colorRSI(v) {
+  if (v == null) return "#94a3b8";
+  if (v >= 70) return "#ef4444";
+  if (v <= 30) return "#22c55e";
+  return "#94a3b8";
+}
+
+function colorDrawdown(v) {
+  if (v == null) return "#94a3b8";
+  if (v >= -5) return "#22c55e";
+  if (v >= -10) return "#eab308";
+  return "#ef4444";
+}
+
+// =========================
+// COMPONENTE PRINCIPAL
+// =========================
 export default function Screener() {
   const [strict, setStrict] = useState([]);
   const [top20, setTop20] = useState([]);
@@ -60,6 +102,9 @@ export default function Screener() {
   );
 }
 
+// =========================
+// SECCIÓN
+// =========================
 function Section({ title, data }) {
   if (!data.length) {
     return <div className="global-loading">Sin datos para {title}</div>;
@@ -74,36 +119,83 @@ function Section({ title, data }) {
           <tr>
             <th>#</th>
             <th>Activo</th>
-            <th>Score</th>
-            <th>Tendencia 3M</th>
-            <th>Sharpe</th>
-            <th>RSI</th>
-            <th>Drawdown Máx</th>
+            <th title="Score cuantitativo total del modelo">Score</th>
+            <th title="Retorno acumulado últimos 3 meses">Momentum 3M</th>
+            <th title="Retorno ajustado por riesgo">Sharpe</th>
+            <th title="Indicador técnico sobrecompra/sobreventa">RSI</th>
+            <th title="Peor caída reciente del activo">Drawdown Máx</th>
           </tr>
         </thead>
+
         <tbody>
-          {data.map((c, index) => (
-            <tr key={`${c.ticker}-${index}`}>
-              <td>{index + 1}</td>
-              <td><strong>{c.ticker}</strong></td>
-              <td>{c.score?.toFixed(3)}</td>
-              <td>{c.trend_3m_pct?.toFixed(2)}%</td>
-              <td>{c.sharpe_ratio?.toFixed(2)}</td>
-              <td
+          {data.map((c, index) => {
+            const isTop3 = index < 3;
+            const isElite = c.score >= 0.75;
+
+            return (
+              <tr
+                key={`${c.ticker}-${index}`}
                 style={{
-                  color:
-                    c.rsi_wilder > 70
-                      ? "#ff5c5c"
-                      : c.rsi_wilder < 30
-                      ? "#4cd964"
-                      : "inherit"
+                  backgroundColor: isTop3 ? "rgba(34,197,94,0.06)" : "transparent"
                 }}
               >
-                {c.rsi_wilder?.toFixed(1)}
-              </td>
-              <td>{c.max_drawdown_pct?.toFixed(2)}%</td>
-            </tr>
-          ))}
+                <td style={{ fontWeight: isTop3 ? 800 : 500 }}>
+                  {index + 1}
+                </td>
+
+                <td>
+                  <strong>
+                    {c.ticker} {isElite && "🔥"}
+                  </strong>
+                </td>
+
+                <td
+                  style={{
+                    color: colorScore(c.score),
+                    fontWeight: 800
+                  }}
+                >
+                  {c.score?.toFixed(3)}
+                </td>
+
+                <td
+                  style={{
+                    color: colorMomentum(c.trend_3m_pct),
+                    fontWeight: 600
+                  }}
+                >
+                  {c.trend_3m_pct?.toFixed(2)}%
+                </td>
+
+                <td
+                  style={{
+                    color: colorSharpe(c.sharpe_ratio),
+                    fontWeight: 600
+                  }}
+                >
+                  {c.sharpe_ratio?.toFixed(2)}
+                </td>
+
+                <td
+                  style={{
+                    color: colorRSI(c.rsi_wilder),
+                    fontWeight: 600
+                  }}
+                >
+                  {c.rsi_wilder?.toFixed(1)}
+                </td>
+
+                <td
+                  style={{
+                    color: colorDrawdown(c.max_drawdown_pct),
+                    fontWeight: 600
+                  }}
+                >
+                  {c.max_drawdown_pct?.toFixed(2)}%
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>
