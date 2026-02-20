@@ -40,9 +40,6 @@ function humanReason(r) {
   return REASON_TEXT[r] || r;
 }
 
-// =========================
-// COMPONENT
-// =========================
 export default function Universe() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,17 +57,14 @@ export default function Universe() {
         setLoading(true);
         setError(null);
 
-        // 1️⃣ TICKERS
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
         const tickers = (await tRes.json()).tickers || [];
 
-        // 2️⃣ ALPHA SNAPSHOT
         const aRes = await fetch(`${API}/alpha`);
         const alphaJson = aRes.ok ? await aRes.json() : {};
         const alphaMap = alphaJson?.results || {};
 
-        // 3️⃣ SIGNALS
         const sRes = await fetch(`${API}/signals`);
         const sJson = sRes.ok ? await sRes.json() : {};
         const signalsMap = {};
@@ -83,7 +77,6 @@ export default function Universe() {
           });
         }
 
-        // 4️⃣ POSICIONES
         let positions = {};
         if (PIPELINE_KEY) {
           const pRes = await fetch(`${API}/internal/positions`, {
@@ -92,12 +85,10 @@ export default function Universe() {
           positions = pRes.ok ? await pRes.json() : {};
         }
 
-        // 5️⃣ EJECUTABILIDAD REAL
         const eRes = await fetch(`${API}/dashboard/executability-preview`);
         const eJson = eRes.ok ? await eRes.json() : {};
         const execResults = eJson?.results || {};
 
-        // 6️⃣ LATEST
         const results = await Promise.all(
           tickers.map(async (ticker) => {
             let retorno = null;
@@ -131,7 +122,6 @@ export default function Universe() {
           })
         );
 
-        // 🔥 ORDEN REAL POR ALPHA
         results.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
 
         setRows(results);
@@ -189,18 +179,6 @@ export default function Universe() {
                 >
                   {r.ticker}
                 </Link>
-
-                {!r.executable && r.rejectReason && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#ef4444",
-                      marginTop: 4,
-                    }}
-                  >
-                    {humanReason(r.rejectReason)}
-                  </div>
-                )}
               </td>
 
               <td style={{ color: colorRetorno(r.retorno), fontWeight: 700 }}>
@@ -250,4 +228,4 @@ export default function Universe() {
       )}
     </div>
   );
-}
+          }
