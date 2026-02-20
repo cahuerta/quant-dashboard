@@ -112,11 +112,16 @@ export default function Universe() {
             } catch {}
 
             const execInfo = execResults?.[ticker] || {};
+            const alphaInfo = alphaMap?.[ticker] || null;
 
             return {
               ticker,
               retorno,
-              alpha: alphaMap?.[ticker]?.alpha_score ?? null,
+              alpha: alphaInfo?.alpha_score ?? null,
+              alphaError:
+                alphaInfo && alphaInfo.alpha_score == null
+                  ? alphaInfo.error || "Alpha error"
+                  : null,
               confidence: signalsMap?.[ticker] ?? null,
               positionValue:
                 positions?.[ticker]?.market_value ?? 0,
@@ -173,7 +178,6 @@ export default function Universe() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              {/* 1️⃣ ACTIVO */}
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
@@ -205,8 +209,18 @@ export default function Universe() {
                   : "—"}
               </td>
 
-              <td style={{ color: colorAlpha(r.alpha), fontWeight: 800 }}>
-                {r.alpha != null ? r.alpha.toFixed(3) : "—"}
+              <td style={{ fontWeight: 800 }}>
+                {r.alpha != null ? (
+                  <span style={{ color: colorAlpha(r.alpha) }}>
+                    {r.alpha.toFixed(3)}
+                  </span>
+                ) : r.alphaError ? (
+                  <span style={{ color: "#ef4444", fontSize: 11 }}>
+                    ⚠ {r.alphaError}
+                  </span>
+                ) : (
+                  "—"
+                )}
               </td>
 
               <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
