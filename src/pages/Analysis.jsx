@@ -53,9 +53,6 @@ export default function Analysis() {
     loadData();
   }, [ticker]);
 
-  // ===============================
-  // UI
-  // ===============================
   return (
     <div className="global-container">
 
@@ -78,7 +75,7 @@ export default function Analysis() {
 
       {!loading && prediction && (
         <>
-          <BloquePrediccion prediction={prediction} />
+          <BloqueResumen prediction={prediction} />
           <BloqueModelo historical={historical} />
           <BloqueConfiguracion meta={meta} />
         </>
@@ -88,25 +85,44 @@ export default function Analysis() {
 }
 
 ////////////////////////////////////////////////////////////
-// 🔥 BLOQUE PREDICCIÓN
+// 🔥 BLOQUE RESUMEN EJECUTIVO
 ////////////////////////////////////////////////////////////
 
-function BloquePrediccion({ prediction }) {
+function BloqueResumen({ prediction }) {
 
-  const color =
+  const retorno = prediction.ret_ens_pct ?? 0;
+
+  const colorRetorno =
+    retorno > 0 ? "#22c55e" :
+    retorno < 0 ? "#ef4444" :
+    "#94a3b8";
+
+  const colorRecomendacion =
     prediction.recommendation === "COMPRA"
       ? "#22c55e"
       : prediction.recommendation === "VENTA"
       ? "#ef4444"
-      : "#facc15";
+      : "#eab308";
 
   return (
     <div className="card">
-      <h2>Predicción Actual</h2>
+      <h2>Resumen Ejecutivo</h2>
 
       <div className="grid-3">
 
-        <Metric label="Fecha Base" value={prediction.date_base} />
+        <Metric
+          label="Recomendación"
+          value={prediction.recommendation}
+          color={colorRecomendacion}
+          strong
+        />
+
+        <Metric
+          label="Retorno Esperado"
+          value={formatPct(prediction.ret_ens_pct)}
+          color={colorRetorno}
+          strong
+        />
 
         <Metric
           label="Precio Actual"
@@ -114,39 +130,18 @@ function BloquePrediccion({ prediction }) {
         />
 
         <Metric
-          label="Precio Estimado"
+          label="Precio Objetivo"
           value={formatMoney(prediction.price_pred)}
         />
 
         <Metric
-          label="Retorno Ensamble"
-          value={formatPct(prediction.ret_ens_pct)}
-        />
-
-        <Metric
-          label="Alpha (Modelo Global)"
+          label="Modelo Global"
           value={formatPct(prediction.ret_global_pct)}
         />
 
         <Metric
-          label="KNN"
+          label="Modelo KNN"
           value={formatPct(prediction.ret_knn_pct)}
-        />
-
-        <Metric
-          label="Recomendación"
-          value={prediction.recommendation}
-          color={color}
-        />
-
-        <Metric
-          label="Dimensiones PCA"
-          value={prediction.pca_dims_effective}
-        />
-
-        <Metric
-          label="N° Features"
-          value={prediction.n_features}
         />
 
       </div>
@@ -155,27 +150,42 @@ function BloquePrediccion({ prediction }) {
 }
 
 ////////////////////////////////////////////////////////////
-// 🔥 BLOQUE MODELO
+// 🔥 BLOQUE SALUD DEL MODELO
 ////////////////////////////////////////////////////////////
 
 function BloqueModelo({ historical }) {
 
   if (!historical) return null;
 
+  const hit = (historical.hit_rate_mean ?? 0) * 100;
+
+  const colorHit =
+    hit >= 60 ? "#22c55e" :
+    hit >= 50 ? "#eab308" :
+    "#ef4444";
+
+  const colorMae =
+    historical.mae_mean < 0.03 ? "#22c55e" :
+    historical.mae_mean < 0.06 ? "#eab308" :
+    "#ef4444";
+
   return (
     <div className="card">
-      <h2>Calidad Histórica del Modelo</h2>
+      <h2>Salud del Modelo</h2>
 
       <div className="grid-3">
 
         <Metric
           label="Tasa de Acierto"
-          value={formatPct(historical.hit_rate_mean * 100, true)}
+          value={hit.toFixed(1) + "%"}
+          color={colorHit}
+          strong
         />
 
         <Metric
           label="Error Medio (MAE)"
           value={historical.mae_mean?.toFixed(4)}
+          color={colorMae}
         />
 
         <Metric
@@ -188,23 +198,13 @@ function BloqueModelo({ historical }) {
           value={historical.n_windows}
         />
 
-        <Metric
-          label="Dimensiones PCA"
-          value={historical.pca_dims}
-        />
-
-        <Metric
-          label="Features"
-          value={historical.n_features}
-        />
-
       </div>
     </div>
   );
 }
 
 ////////////////////////////////////////////////////////////
-// 🔥 BLOQUE CONFIGURACIÓN MODELO
+// 🔥 BLOQUE CONFIGURACIÓN
 ////////////////////////////////////////////////////////////
 
 function BloqueConfiguracion({ meta }) {
@@ -213,14 +213,14 @@ function BloqueConfiguracion({ meta }) {
 
   return (
     <div className="card">
-      <h2>Configuración del Modelo</h2>
+      <h2>Configuración Técnica</h2>
 
       <div className="grid-3">
 
         <Metric label="Horizonte (días)" value={meta.horizon_days} />
         <Metric label="Theta" value={meta.theta} />
         <Metric label="Vecinos KNN" value={meta.k_neighbors} />
-        <Metric label="Alpha" value={meta.alpha} />
+        <Metric label="Alpha Param" value={meta.alpha} />
         <Metric label="PCA Target" value={meta.pca_target} />
         <Metric label="Periodo Histórico" value={meta.period} />
 
@@ -230,14 +230,21 @@ function BloqueConfiguracion({ meta }) {
 }
 
 ////////////////////////////////////////////////////////////
-// COMPONENTE MÉTRICA
+// COMPONENTE MÉTRICA MEJORADO
 ////////////////////////////////////////////////////////////
 
-function Metric({ label, value, color }) {
+function Metric({ label, value, color, strong }) {
   return (
     <div className="metric">
       <div className="metric-label">{label}</div>
-      <div className="metric-value" style={{ color }}>
+      <div
+        className="metric-value"
+        style={{
+          color: color || "inherit",
+          fontWeight: strong ? 800 : 600,
+          fontSize: strong ? "1.3rem" : "1rem"
+        }}
+      >
         {value ?? "—"}
       </div>
     </div>
@@ -253,7 +260,7 @@ function formatMoney(v) {
   return "$" + v.toFixed(2);
 }
 
-function formatPct(v, alreadyPct = false) {
+function formatPct(v) {
   if (v == null) return "—";
-  return (alreadyPct ? v.toFixed(1) : (v * 100).toFixed(2)) + "%";
-          }
+  return (v * 100).toFixed(2) + "%";
+}
