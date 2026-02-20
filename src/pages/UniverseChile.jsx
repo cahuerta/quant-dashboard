@@ -1,7 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-const API = "https://spy-2w-price-prediction.onrender.com";
+const API = import.meta.env.VITE_API_URL;
+const PIPELINE_KEY = import.meta.env.VITE_PIPELINE_KEY;
+
+// =========================
+// 🎨 COLORES
+// =========================
+function colorRetorno(v) {
+  if (v == null) return "#94a3b8";
+  return v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : "#94a3b8";
+}
+
+function colorAlpha(a) {
+  if (a == null) return "#94a3b8";
+  if (a >= 0.70) return "#16a34a";
+  if (a >= 0.55) return "#eab308";
+  return "#ef4444";
+}
+
+function colorConf(c) {
+  if (c == null) return "#94a3b8";
+  if (c >= 0.75) return "#16a34a";
+  if (c >= 0.50) return "#eab308";
+  return "#ef4444";
+}
 
 export default function UniverseChile() {
   const [rows, setRows] = useState([]);
@@ -9,67 +32,86 @@ export default function UniverseChile() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!API) {
+      setError("Falta VITE_API_URL");
+      setLoading(false);
+      return;
+    }
+
     async function loadUniverseChile() {
       try {
-        // 1️⃣ Obtener tickers
+        setLoading(true);
+        setError(null);
+
+        // 1️⃣ Tickers
         const tRes = await fetch(`${API}/dashboard/tickers`);
         if (!tRes.ok) throw new Error("Tickers error");
-        const tJson = await tRes.json();
+        const tickers = (await tRes.json()).tickers || [];
 
         // 🔹 SOLO CHILE
-        const tickers = (tJson.tickers || []).filter((t) =>
-          t.endsWith(".SN")
-        );
+        const chileTickers = tickers.filter(t => t.endsWith(".SN"));
 
-        // 2️⃣ Obtener signals (para fundamental_flag)
+        // 2️⃣ Alpha snapshot
+        const aRes = await fetch(`${API}/alpha`);
+        const alphaJson = aRes.ok ? await aRes.json() : {};
+        const alphaMap = alphaJson?.results || {};
+
+        // 3️⃣ Signals
         const sRes = await fetch(`${API}/signals`);
-        if (!sRes.ok) throw new Error("Signals error");
-        const sJson = await sRes.json();
-
+        const sJson = sRes.ok ? await sRes.json() : {};
         const signalsMap = {};
+
         if (Array.isArray(sJson.signals)) {
           sJson.signals.forEach((s) => {
-            if (!s.error) {
-              signalsMap[s.ticker] = s.fundamental_flag || null;
+            if (!s.error && s.ticker) {
+              signalsMap[s.ticker] = s.confidence ?? null;
             }
           });
         }
 
-        // 3️⃣ Obtener latest prediction
+        // 4️⃣ Ejecutabilidad
+        const eRes = await fetch(`${API}/dashboard/executability-preview`);
+        const eJson = eRes.ok ? await eRes.json() : {};
+        const execResults = eJson?.results || {};
+
+        // 5️⃣ Latest prediction
         const results = await Promise.all(
-          tickers.map(async (ticker) => {
+          chileTickers.map(async (ticker) => {
+            let retorno = null;
+
             try {
-              const lRes = await fetch(
-                `${API}/dashboard/latest/${ticker}`
-              );
-              if (!lRes.ok) return null;
+              const lRes = await fetch(`${API}/dashboard/latest/${ticker}`);
+              if (lRes.ok) {
+                const lJson = await lRes.json();
+                retorno =
+                  lJson?.latest?.prediction?.ret_ens_pct ?? null;
+              }
+            } catch {}
 
-              const lJson = await lRes.json();
-              const p = lJson.latest?.prediction;
-              if (!p) return null;
+            const alphaInfo = alphaMap?.[ticker] || null;
+            const execInfo = execResults?.[ticker] || {};
 
-              return {
-                ticker,
-                recommendation: p.recommendation,
-                price_now: p.price_now,
-                price_pred: p.price_pred,
-                ret_ens_pct: p.ret_ens_pct ?? 0,
-                fundamental_flag: signalsMap[ticker] || null,
-              };
-            } catch {
-              return null;
-            }
+            return {
+              ticker,
+              retorno,
+              alpha: alphaInfo?.alpha_score ?? null,
+              alphaError:
+                alphaInfo && alphaInfo.alpha_score == null
+                  ? alphaInfo.error || "Alpha error"
+                  : null,
+              confidence: signalsMap?.[ticker] ?? null,
+              executable: execInfo?.executable ?? false,
+            };
           })
         );
 
-        const clean = results
-          .filter(Boolean)
-          .sort((a, b) => b.ret_ens_pct - a.ret_ens_pct);
+        // 🔥 Orden por Alpha (como institucional)
+        results.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
 
-        setRows(clean);
+        setRows(results);
       } catch (err) {
         console.error(err);
-        setError("No se pudo cargar Universe Chile");
+        setError("Error cargando Universe Chile");
       } finally {
         setLoading(false);
       }
@@ -77,6 +119,11 @@ export default function UniverseChile() {
 
     loadUniverseChile();
   }, []);
+
+  const subtitle = useMemo(() => {
+    const exec = rows.filter(r => r.executable).length;
+    return `Activos Chile: ${rows.length} | Ejecutables: ${exec}`;
+  }, [rows]);
 
   if (loading)
     return <div className="global-loading">Cargando Universe Chile...</div>;
@@ -87,71 +134,72 @@ export default function UniverseChile() {
   return (
     <div className="global-container">
       <div className="global-header">
-        <h1>Universe Chile 🇨🇱</h1>
+        <div>
+          <h1>Universe Chile 🇨🇱</h1>
+          <div style={{ color: "#94a3b8" }}>{subtitle}</div>
+        </div>
       </div>
 
       <table className="table">
         <thead>
           <tr>
-            <th>Ticker</th>
-            <th>Modelo</th>
-            <th>Precio</th>
-            <th>Objetivo</th>
+            <th>Activo</th>
             <th>Retorno</th>
-            <th>Fundamental</th>
+            <th>Alpha</th>
+            <th>Confianza</th>
+            <th>Ejecutable</th>
           </tr>
         </thead>
 
         <tbody>
           {rows.map((r) => (
             <tr key={r.ticker}>
-              {/* 🔥 Click → Analysis */}
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
                   style={{
                     color: "#38bdf8",
+                    fontWeight: 700,
                     textDecoration: "none",
-                    fontWeight: 600,
                   }}
                 >
                   {r.ticker}
                 </Link>
               </td>
 
-              <td>{r.recommendation || "—"}</td>
-
-              <td>
-                {r.price_now != null
-                  ? Number(r.price_now).toFixed(2)
+              <td style={{ color: colorRetorno(r.retorno), fontWeight: 700 }}>
+                {r.retorno != null
+                  ? r.retorno.toFixed(2) + "%"
                   : "—"}
               </td>
 
-              <td>
-                {r.price_pred != null
-                  ? Number(r.price_pred).toFixed(2)
+              <td style={{ fontWeight: 800 }}>
+                {r.alpha != null ? (
+                  <span style={{ color: colorAlpha(r.alpha) }}>
+                    {r.alpha.toFixed(3)}
+                  </span>
+                ) : r.alphaError ? (
+                  <span style={{ color: "#ef4444", fontSize: 11 }}>
+                    ⚠ {r.alphaError}
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </td>
+
+              <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
+                {r.confidence != null
+                  ? r.confidence.toFixed(2)
                   : "—"}
               </td>
 
-              <td
-                style={{
-                  color:
-                    r.ret_ens_pct > 0
-                      ? "#22c55e"
-                      : r.ret_ens_pct < 0
-                      ? "#ef4444"
-                      : "#94a3b8",
-                  fontWeight: 600,
-                }}
-              >
-                {r.ret_ens_pct.toFixed(2)}%
+              <td style={{ fontWeight: 800 }}>
+                {r.executable ? "✅" : "❌"}
               </td>
-
-              <td>{r.fundamental_flag || "—"}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
-}
+              }
