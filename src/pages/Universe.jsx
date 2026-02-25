@@ -222,11 +222,6 @@ export default function Universe() {
           ))}
         </tbody>
       </table>
-
-      {!PIPELINE_KEY && (
-        <div style={{ marginTop: 12, color: "#eab308" }}>
-          ⚠️ Sin VITE_PIPELINE_KEY → Posición no visible
-        </div>
       )}
     </div>
   );
