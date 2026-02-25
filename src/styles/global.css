@@ -410,3 +410,46 @@ a {
     font-size: 22px;
   }
 }
+/* ================= NAV IMPROVED ================= */
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-icon {
+  font-size: 18px;
+  transition: 0.2s ease;
+}
+
+.nav-link.active .nav-icon {
+  transform: scale(1.2);
+}
+
+.nav-label {
+  font-size: 14px;
+}
+
+/* Mobile layout nav grid */
+@media (max-width: 900px) {
+  .nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    text-align: center;
+  }
+
+  .nav-link {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nav-icon {
+    font-size: 22px;
+  }
+
+  .nav-label {
+    font-size: 12px;
+  }
+}
