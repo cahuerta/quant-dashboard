@@ -10,7 +10,7 @@ export default function Layout() {
         {/* BRAND */}
         <div className="brand">
           <div className="brand-dot" />
-          Quant Enterprise
+          <span className="brand-text">Quant Enterprise</span>
         </div>
 
         {/* NAV */}
@@ -18,43 +18,42 @@ export default function Layout() {
 
           <NavLink to="/" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">📊</span>
-            Resumen
+            <span className="nav-label">Resumen</span>
           </NavLink>
 
           <NavLink to="/universe" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">🌍</span>
-            Universo
+            <span className="nav-label">Universo</span>
           </NavLink>
 
           <NavLink to="/universe-cl" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">🇨🇱</span>
-            Chile
+            <span className="nav-label">Chile</span>
           </NavLink>
 
           <NavLink to="/signals" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">📡</span>
-            Signals
+            <span className="nav-label">Signals</span>
           </NavLink>
 
           <NavLink to="/screener" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">🔎</span>
-            Screener
+            <span className="nav-label">Screener</span>
           </NavLink>
 
           <NavLink to="/portfolio" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">💼</span>
-            Portafolio
+            <span className="nav-label">Portafolio</span>
           </NavLink>
 
-          {/* ✅ CORREGIDO */}
           <NavLink to="/positions" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">📋</span>
-            Posiciones
+            <span className="nav-label">Posiciones</span>
           </NavLink>
 
           <NavLink to="/analysis" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">📈</span>
-            Análisis
+            <span className="nav-label">Análisis</span>
           </NavLink>
 
         </nav>
