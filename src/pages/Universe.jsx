@@ -76,14 +76,16 @@ export default function Universe() {
             }
           });
         }
-
         let positions = {};
-        if (PIPELINE_KEY) {
-          const pRes = await fetch(`${API}/internal/positions`, {
-            headers: { "X-PIPELINE-KEY": PIPELINE_KEY },
-          });
-          positions = pRes.ok ? await pRes.json() : {};
-        }
+            try {
+                const pRes = await fetch(`${API}/trading/positions`, {
+                cache: "no-store",
+                });
+                positions = pRes.ok ? await pRes.json() : {};
+                } catch {
+                positions = {};
+                }
+        
 
         const eRes = await fetch(`${API}/dashboard/executability-preview`);
         const eJson = eRes.ok ? await eRes.json() : {};
