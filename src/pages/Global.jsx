@@ -26,9 +26,7 @@ export default function Global() {
         headers: { Accept: "application/json" },
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const json = await res.json();
       setMarket(json);
@@ -49,9 +47,7 @@ export default function Global() {
         headers: { Accept: "application/json" },
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const json = await res.json();
       setPerf(json);
@@ -65,12 +61,13 @@ export default function Global() {
   return (
     <div className="global-container">
       <div className="global-header">
-        <h1>Resumen Global</h1>
+        <h1>Resumen Global del Modelo</h1>
       </div>
 
-      <div className="global-summary">
+      {/* ================= CONTEXTO MERCADO ================= */}
+      <SectionTitle title="Contexto de Mercado" />
 
-        {/* ================= MARKET MODE ================= */}
+      <div className="global-summary">
         <SummaryCard
           label="Modo de Mercado"
           loading={marketLoading}
@@ -83,7 +80,7 @@ export default function Global() {
         />
 
         <SummaryCard
-          label="Confianza Régimen"
+          label="Confianza del Régimen"
           loading={marketLoading}
           error={marketError}
           value={
@@ -92,10 +89,14 @@ export default function Global() {
               : null
           }
         />
+      </div>
 
-        {/* ================= PERFORMANCE ================= */}
+      {/* ================= RENDIMIENTO HISTÓRICO ================= */}
+      <SectionTitle title="Rendimiento Histórico" />
+
+      <div className="global-summary">
         <SummaryCard
-          label="Retorno Total"
+          label="Retorno Total Acumulado"
           loading={perfLoading}
           error={perfError}
           value={
@@ -116,12 +117,89 @@ export default function Global() {
           }
         />
 
+        <SummaryCard
+          label="Máximo Drawdown Histórico"
+          loading={perfLoading}
+          error={perfError}
+          value={
+            perf?.max_drawdown_pct != null
+              ? `${perf.max_drawdown_pct}%`
+              : null
+          }
+        />
+
+        <SummaryCard
+          label="Ratio Sharpe"
+          loading={perfLoading}
+          error={perfError}
+          value={
+            perf?.sharpe_ratio != null
+              ? perf.sharpe_ratio.toFixed(2)
+              : null
+          }
+        />
+      </div>
+
+      {/* ================= CALIDAD DEL MODELO ================= */}
+      <SectionTitle title="Calidad del Modelo" />
+
+      <div className="global-summary">
+        <SummaryCard
+          label="Tasa de Acierto Histórica"
+          loading={perfLoading}
+          error={perfError}
+          value={
+            perf?.win_rate_pct != null
+              ? `${perf.win_rate_pct}%`
+              : null
+          }
+        />
+
+        <SummaryCard
+          label="Error Promedio de Predicción"
+          loading={perfLoading}
+          error={perfError}
+          value={
+            perf?.avg_prediction_error_pct != null
+              ? `${perf.avg_prediction_error_pct}%`
+              : null
+          }
+        />
+
+        <SummaryCard
+          label="Total de Predicciones Generadas"
+          loading={perfLoading}
+          error={perfError}
+          value={perf?.total_predictions ?? null}
+        />
+
+        <SummaryCard
+          label="Predicciones Evaluadas"
+          loading={perfLoading}
+          error={perfError}
+          value={perf?.evaluated_predictions ?? null}
+        />
+
+        <SummaryCard
+          label="Predicciones Pendientes"
+          loading={perfLoading}
+          error={perfError}
+          value={perf?.pending_predictions ?? null}
+        />
       </div>
     </div>
   );
 }
 
 /* ===================================================== */
+
+function SectionTitle({ title }) {
+  return (
+    <h2 style={{ marginTop: 40, marginBottom: 15 }}>
+      {title}
+    </h2>
+  );
+}
 
 function SummaryCard({ label, value, loading, error }) {
   return (
@@ -147,4 +225,4 @@ function SummaryCard({ label, value, loading, error }) {
       )}
     </div>
   );
-}
+          }
