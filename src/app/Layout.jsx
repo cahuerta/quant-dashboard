@@ -45,7 +45,12 @@ export default function Layout() {
             <span className="nav-icon">💼</span>
             Portafolio
           </NavLink>
-          <NavLink to="/positions">Posiciones Activas</NavLink>
+
+          {/* ✅ CORREGIDO */}
+          <NavLink to="/positions" className={({isActive}) => navClass(isActive)}>
+            <span className="nav-icon">📋</span>
+            Posiciones
+          </NavLink>
 
           <NavLink to="/analysis" className={({isActive}) => navClass(isActive)}>
             <span className="nav-icon">📈</span>
