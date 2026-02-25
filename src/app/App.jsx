@@ -7,7 +7,8 @@ import UniverseChile from "../pages/UniverseChile";
 import Signals from "../pages/Signals";
 import Screener from "../pages/Screener";
 import Portfolio from "../pages/Portfolio";
-import Analysis from "../pages/Analysis"; // 🔥 NUEVO
+import Analysis from "../pages/Analysis";
+import PositionsLive from "../pages/PositionsLive"; // ✅ NUEVO
 
 export default function App() {
   return (
@@ -19,8 +20,8 @@ export default function App() {
         <Route path="/signals" element={<Signals />} />
         <Route path="/screener" element={<Screener />} />
         <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/positions" element={<PositionsLive />} /> {/* ✅ NUEVO */}
 
-        {/* 🔥 NUEVA RUTA */}
         <Route path="/analysis" element={<Analysis />} />
 
         <Route path="*" element={<Navigate to="/" />} />
