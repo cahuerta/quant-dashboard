@@ -1,126 +1,397 @@
 /* =====================================================
-   FIX PACK — v2.1 (NO rompe estilo)
-   Pégalo al final del CSS
+   QUANT ENTERPRISE — GLOBAL SYSTEM STYLES
+   Production Ready • Stable Layout • Sticky Header Fixed
    ===================================================== */
 
-/* Contenedor estándar */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-}
+/* =====================================================
+   ROOT VARIABLES
+   ===================================================== */
 
-/* Evita que el main quede gigantesco en pantallas muy anchas */
-.main {
-  display: flex;
-  justify-content: center;
-}
+:root {
+  --bg-main: #0b1220;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #111827;
 
-.main > * {
-  width: 100%;
-  max-width: 1200px;
-}
+  --bg-card: #121a2b;
+  --bg-card-hover: #16223a;
 
-/* Header: mejor estabilidad sticky en Android */
-.header {
-  -webkit-backdrop-filter: blur(16px);
-}
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-/* Subtítulo/ayuda en headers */
-.global-subtitle {
-  margin-top: 8px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
-/* Texto “muted” utilitario */
-.muted {
-  color: var(--text-secondary);
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.15);
+
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #facc15;
+
+  --radius-xl: 22px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 /* =====================================================
-   TABLAS RESPONSIVE (CRÍTICO)
+   BASE RESET
    ===================================================== */
 
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-soft);
-  background: var(--bg-card);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-/* La tabla ahora vive dentro de .table-wrap */
-.table {
-  min-width: 820px; /* ajusta según columnas */
-  border-collapse: collapse;
-  background: transparent;
-  border-radius: 0;
-  overflow: visible;
+html, body {
+  margin: 0;
+  padding: 0;
 }
 
-/* Header tabla fijo visualmente */
-.table th {
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(
+    180deg,
+    var(--bg-main) 0%,
+    var(--bg-secondary) 100%
+  );
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* =====================================================
+   LAYOUT STRUCTURE
+   ===================================================== */
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =====================================================
+   HEADER (FIX REAL)
+   ===================================================== */
+
+.header {
   position: sticky;
   top: 0;
-  background: rgba(18, 26, 43, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 1;
+  z-index: 1000;
+
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 18px 40px;
+
+  background: rgba(11, 18, 32, 0.95);
+  backdrop-filter: blur(12px);
+
+  border-bottom: 1px solid var(--border-soft);
 }
 
-/* Alineación numérica mejor */
-.td-right {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
+/* Brand */
+
+.brand {
+  font-weight: 600;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
 }
 
-/* Mejor lectura en numbers */
-.table td {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Hover más suave (ya tenías, pero reforzamos contraste) */
-.table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 /* =====================================================
-   RESUMEN COMPACTO (para Posiciones Activas)
+   NAVIGATION
    ===================================================== */
 
-.summary-inline {
+.nav {
   display: flex;
-  gap: 18px;
+  gap: 28px;
+  align-items: center;
   flex-wrap: wrap;
-  margin: 14px 0 22px;
+}
+
+.nav-link {
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-secondary);
+  transition: 0.2s ease;
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+/* =====================================================
+   MAIN CONTENT
+   ===================================================== */
+
+.main {
+  flex: 1;
+  padding: 48px;
+}
+
+/* =====================================================
+   GLOBAL MODULE (Resumen)
+   ===================================================== */
+
+.global-container {
+  width: 100%;
+}
+
+.global-loading {
+  padding: 80px 0;
+  text-align: center;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+/* ================= HEADER ================= */
+
+.global-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 60px;
+}
+
+.global-header h1 {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+/* ================= MODE CARD ================= */
+
+.global-mode {
+  background: rgba(18, 26, 43, 0.85);
+  backdrop-filter: blur(14px);
+  padding: 20px 28px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-soft);
+  text-align: center;
+  min-width: 180px;
+}
+
+.global-mode span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.global-mode strong {
+  font-size: 20px;
+  font-weight: 600;
+}
+/* ================================
+   GLOBAL SUMMARY SIMPLE
+   ================================ */
+
+.global-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
+  margin-top: 40px;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  border: 1px solid var(--border-soft);
+  text-align: left;
+  transition: 0.2s ease;
+}
+
+.summary-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-4px);
+}
+
+.summary-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.summary-value {
+  font-size: 28px;
+  font-weight: 600;
+}
+/* =====================================================
+   GRID
+   ===================================================== */
+
+.global-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 32px;
+}
+
+/* =====================================================
+   CARD
+   ===================================================== */
+
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  border: 1px solid var(--border-soft);
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.card-value {
+  font-size: 26px;
+  font-weight: 600;
+}
+
+/* =====================================================
+   TABLE
+   ===================================================== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table th,
+.table td {
+  padding: 14px 18px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
   font-size: 14px;
 }
 
-.summary-inline strong {
-  color: var(--text-primary);
-  font-weight: 700;
+.table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.table tr:hover {
+  background: var(--bg-card-hover);
 }
 
 /* =====================================================
-   MOBILE EXTRA (mejoras finas)
+   BADGES
+   ===================================================== */
+
+.badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.badge-warning {
+  background: rgba(250, 204, 21, 0.15);
+  color: var(--warning);
+}
+
+.badge-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* =====================================================
+   RESPONSIVE
    ===================================================== */
 
 @media (max-width: 900px) {
-  .main > * {
-    max-width: 100%;
+
+  .header {
+    padding: 16px 20px;
   }
 
-  /* Tabla: que nunca “rompa” el layout */
-  .table-wrap {
-    border-radius: var(--radius-md);
+  .nav {
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  /* Reduce padding en celdas para que quepa más */
-  .table th,
-  .table td {
-    padding: 12px 14px;
-    font-size: 13px;
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main {
+    padding: 24px;
+  }
+
+  .global-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .global-header h1 {
+    font-size: 24px;
+  }
+
+  .global-grid {
+    gap: 20px;
+  }
+
+  .card {
+    padding: 22px;
+  }
+
+  .card-value {
+    font-size: 22px;
   }
 }
