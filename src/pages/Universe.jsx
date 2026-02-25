@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
-const PIPELINE_KEY = import.meta.env.VITE_PIPELINE_KEY;
+
 
 // =========================
 // 🎨 COLORES
@@ -222,7 +222,7 @@ export default function Universe() {
           ))}
         </tbody>
       </table>
-      )}
+      
     </div>
   );
           }
