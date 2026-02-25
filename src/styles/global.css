@@ -1,6 +1,6 @@
 /* =====================================================
-   QUANT ENTERPRISE — GLOBAL SYSTEM STYLES
-   Production Ready • Stable Layout • Sticky Header Fixed
+   QUANT ENTERPRISE — GLOBAL SYSTEM STYLES (Enhanced Safe)
+   Stable • Premium • No Layout Breaking
    ===================================================== */
 
 /* =====================================================
@@ -13,7 +13,7 @@
   --bg-tertiary: #111827;
 
   --bg-card: #121a2b;
-  --bg-card-hover: #16223a;
+  --bg-card-hover: #182742;
 
   --border-soft: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.12);
@@ -34,7 +34,7 @@
   --radius-md: 14px;
   --radius-sm: 8px;
 
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 12px 35px rgba(0, 0, 0, 0.35);
 }
 
 /* =====================================================
@@ -54,11 +54,14 @@ html, body {
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: linear-gradient(
-    180deg,
-    var(--bg-main) 0%,
-    var(--bg-secondary) 100%
-  );
+  background:
+    radial-gradient(circle at 15% 10%, rgba(56,189,248,0.05), transparent 40%),
+    radial-gradient(circle at 85% 90%, rgba(56,189,248,0.04), transparent 40%),
+    linear-gradient(
+      180deg,
+      var(--bg-main) 0%,
+      var(--bg-secondary) 100%
+    );
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
@@ -69,7 +72,7 @@ a {
 }
 
 /* =====================================================
-   LAYOUT STRUCTURE
+   LAYOUT
    ===================================================== */
 
 .layout {
@@ -79,7 +82,7 @@ a {
 }
 
 /* =====================================================
-   HEADER (FIX REAL)
+   HEADER
    ===================================================== */
 
 .header {
@@ -94,10 +97,12 @@ a {
 
   padding: 18px 40px;
 
-  background: rgba(11, 18, 32, 0.95);
-  backdrop-filter: blur(12px);
+  background: rgba(11, 18, 32, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 
   border-bottom: 1px solid var(--border-soft);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 
 /* Brand */
@@ -116,6 +121,7 @@ a {
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
 }
 
 /* =====================================================
@@ -157,7 +163,7 @@ a {
 }
 
 /* =====================================================
-   GLOBAL MODULE (Resumen)
+   GLOBAL MODULE
    ===================================================== */
 
 .global-container {
@@ -171,7 +177,7 @@ a {
   color: var(--text-muted);
 }
 
-/* ================= HEADER ================= */
+/* HEADER BLOCK */
 
 .global-header {
   display: flex;
@@ -181,21 +187,27 @@ a {
 }
 
 .global-header h1 {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 600;
   letter-spacing: -0.5px;
 }
 
-/* ================= MODE CARD ================= */
+/* =====================================================
+   MODE CARD
+   ===================================================== */
 
 .global-mode {
-  background: rgba(18, 26, 43, 0.85);
-  backdrop-filter: blur(14px);
-  padding: 20px 28px;
+  background: linear-gradient(
+    135deg,
+    rgba(18,26,43,0.95),
+    rgba(18,26,43,0.85)
+  );
+  padding: 24px 30px;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-soft);
   text-align: center;
-  min-width: 180px;
+  min-width: 200px;
+  box-shadow: var(--shadow-soft);
 }
 
 .global-mode span {
@@ -204,16 +216,17 @@ a {
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .global-mode strong {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
 }
-/* ================================
-   GLOBAL SUMMARY SIMPLE
-   ================================ */
+
+/* =====================================================
+   SUMMARY GRID
+   ===================================================== */
 
 .global-summary {
   display: grid;
@@ -228,7 +241,8 @@ a {
   padding: 36px;
   border: 1px solid var(--border-soft);
   text-align: left;
-  transition: 0.2s ease;
+  transition: 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
 .summary-card:hover {
@@ -245,9 +259,10 @@ a {
 }
 
 .summary-value {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 600;
 }
+
 /* =====================================================
    GRID
    ===================================================== */
