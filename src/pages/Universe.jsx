@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+Import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
 
-
 // =========================
 // 🎨 COLORES
 // =========================
-function colorRetorno(v) {
-  if (v == null) return "#94a3b8";
-  return v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : "#94a3b8";
-}
-
 function colorAlpha(a) {
   if (a == null) return "#94a3b8";
   if (a >= 0.70) return "#16a34a";
@@ -27,25 +21,16 @@ function colorConf(c) {
 }
 
 // =========================
-// 🧠 TRADUCCIÓN RECHAZOS
+// COMPONENT
 // =========================
-const REASON_TEXT = {
-  alpha_below_threshold: "Alpha bajo umbral",
-  expected_shortfall_block: "Bloqueado por ES95",
-  volatility_block: "Volatilidad extrema",
-  beta_defensive_block: "Beta alto en modo defensivo",
-};
-
-function humanReason(r) {
-  return REASON_TEXT[r] || r;
-}
-
 export default function Universe() {
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+
     if (!API) {
       setError("Falta VITE_API_URL");
       setLoading(false);
@@ -53,94 +38,45 @@ export default function Universe() {
     }
 
     async function loadUniverse() {
+
       try {
+
         setLoading(true);
         setError(null);
 
-        const tRes = await fetch(`${API}/dashboard/tickers`);
-        if (!tRes.ok) throw new Error("Tickers error");
-        const tickers = (await tRes.json()).tickers || [];
+        const res = await fetch(`${API}/dashboard/universe`, {
+          cache: "no-store",
+        });
 
-        const aRes = await fetch(`${API}/alpha`);
-        const alphaJson = aRes.ok ? await aRes.json() : {};
-        const alphaMap = alphaJson?.results || {};
+        if (!res.ok) throw new Error("Universe error");
 
-        const sRes = await fetch(`${API}/signals`);
-        const sJson = sRes.ok ? await sRes.json() : {};
-        const signalsMap = {};
+        const json = await res.json();
 
-        if (Array.isArray(sJson.signals)) {
-          sJson.signals.forEach((s) => {
-            if (!s.error && s.ticker) {
-              signalsMap[s.ticker] = s.confidence ?? null;
-            }
-          });
-        }
-        let positions = {};
-            try {
-                const pRes = await fetch(`${API}/trading/positions`, {
-                cache: "no-store",
-                });
-                positions = pRes.ok ? await pRes.json() : {};
-                } catch {
-                positions = {};
-                }
-        
+        setRows(json?.rows || []);
 
-        const eRes = await fetch(`${API}/dashboard/executability-preview`);
-        const eJson = eRes.ok ? await eRes.json() : {};
-        const execResults = eJson?.results || {};
-
-        const results = await Promise.all(
-          tickers.map(async (ticker) => {
-            let retorno = null;
-
-            try {
-              const lRes = await fetch(`${API}/dashboard/latest/${ticker}`);
-              if (lRes.ok) {
-                const lJson = await lRes.json();
-                retorno =
-                  lJson?.latest?.prediction?.ret_ens_pct ?? null;
-              }
-            } catch {}
-
-            const execInfo = execResults?.[ticker] || {};
-            const alphaInfo = alphaMap?.[ticker] || null;
-
-            return {
-              ticker,
-              retorno,
-              alpha: alphaInfo?.alpha_score ?? null,
-              alphaError:
-                alphaInfo && alphaInfo.alpha_score == null
-                  ? alphaInfo.error || "Alpha error"
-                  : null,
-              confidence: signalsMap?.[ticker] ?? null,
-              positionValue:
-                positions?.[ticker]?.market_value ?? 0,
-              executable: execInfo?.executable ?? false,
-              rejectReason: execInfo?.reason ?? null,
-            };
-          })
-        );
-
-        results.sort((a, b) => (b.alpha ?? -999) - (a.alpha ?? -999));
-
-        setRows(results);
       } catch (err) {
+
         console.error(err);
         setError("Error cargando Universe");
+
       } finally {
+
         setLoading(false);
+
       }
+
     }
 
     loadUniverse();
+
   }, []);
 
   const subtitle = useMemo(() => {
+
     const exec = rows.filter((r) => r.executable).length;
+
     return `Activos: ${rows.length} | Ejecutables: ${exec}`;
+
   }, [rows]);
 
   if (loading) return <div className="global-loading">Cargando...</div>;
@@ -148,18 +84,21 @@ export default function Universe() {
 
   return (
     <div className="global-container">
+
       <div className="global-header">
         <div>
           <h1>Universe Institucional</h1>
-          <div style={{ color: "#94a3b8" }}>{subtitle}</div>
+          <div style={{ color: "#94a3b8" }}>
+            {subtitle}
+          </div>
         </div>
       </div>
 
       <table className="table">
+
         <thead>
           <tr>
             <th>Activo</th>
-            <th>Retorno</th>
             <th>Alpha</th>
             <th>Confianza</th>
             <th>Posición</th>
@@ -168,8 +107,10 @@ export default function Universe() {
         </thead>
 
         <tbody>
+
           {rows.map((r) => (
             <tr key={r.ticker}>
+
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
@@ -183,20 +124,10 @@ export default function Universe() {
                 </Link>
               </td>
 
-              <td style={{ color: colorRetorno(r.retorno), fontWeight: 700 }}>
-                {r.retorno != null
-                  ? r.retorno.toFixed(2) + "%"
-                  : "—"}
-              </td>
-
               <td style={{ fontWeight: 800 }}>
                 {r.alpha != null ? (
                   <span style={{ color: colorAlpha(r.alpha) }}>
                     {r.alpha.toFixed(3)}
-                  </span>
-                ) : r.alphaError ? (
-                  <span style={{ color: "#ef4444", fontSize: 11 }}>
-                    ⚠ {r.alphaError}
                   </span>
                 ) : (
                   "—"
@@ -218,11 +149,14 @@ export default function Universe() {
               <td style={{ fontWeight: 800 }}>
                 {r.executable ? "✅" : "❌"}
               </td>
+
             </tr>
           ))}
+
         </tbody>
+
       </table>
-      
+
     </div>
   );
-          }
+}
