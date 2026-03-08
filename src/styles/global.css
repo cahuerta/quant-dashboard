@@ -1,497 +1,386 @@
 /* =====================================================
-   QUANT ENTERPRISE — GLOBAL SYSTEM STYLES (Enhanced Safe)
-   Stable • Premium • No Layout Breaking
+   QUANT ENTERPRISE UI — PRO DASHBOARD THEME
+   Stable • Clean • Trading Terminal Style
    ===================================================== */
 
 /* =====================================================
-   ROOT VARIABLES
+   ROOT
    ===================================================== */
 
 :root {
+
   --bg-main: #0b1220;
   --bg-secondary: #0f172a;
-  --bg-tertiary: #111827;
 
-  --bg-card: #121a2b;
-  --bg-card-hover: #182742;
+  --card-bg: #121a2b;
+  --card-hover: #182742;
 
-  --border-soft: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-soft: rgba(255,255,255,0.06);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
 
   --accent: #38bdf8;
-  --accent-soft: rgba(56, 189, 248, 0.15);
 
-  --success: #22c55e;
-  --danger: #ef4444;
-  --warning: #facc15;
+  --green: #22c55e;
+  --red: #ef4444;
+  --orange: #f97316;
 
-  --radius-xl: 22px;
-  --radius-lg: 18px;
-  --radius-md: 14px;
-  --radius-sm: 8px;
+  --radius: 16px;
 
-  --shadow-soft: 0 12px 35px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 10px 30px rgba(0,0,0,0.35);
 }
+
 
 /* =====================================================
-   BASE RESET
+   GLOBAL
    ===================================================== */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: system-ui, -apple-system, sans-serif;
+body{
+  margin:0;
+  font-family:system-ui,-apple-system;
   background:
-    radial-gradient(circle at 15% 10%, rgba(56,189,248,0.05), transparent 40%),
-    radial-gradient(circle at 85% 90%, rgba(56,189,248,0.04), transparent 40%),
-    linear-gradient(
-      180deg,
-      var(--bg-main) 0%,
-      var(--bg-secondary) 100%
-    );
-  color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
+
+  radial-gradient(circle at 15% 10%,rgba(56,189,248,0.06),transparent 40%),
+  radial-gradient(circle at 90% 80%,rgba(56,189,248,0.04),transparent 40%),
+
+  var(--bg-main);
+
+  color:var(--text-main);
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
+
 
 /* =====================================================
-   LAYOUT
+   CONTAINER
    ===================================================== */
 
-.layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.global-container{
+  padding:48px;
+  max-width:1400px;
+  margin:auto;
 }
+
+
 
 /* =====================================================
    HEADER
    ===================================================== */
 
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 18px 40px;
-
-  background: rgba(11, 18, 32, 0.92);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-
-  border-bottom: 1px solid var(--border-soft);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+.global-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:40px;
 }
 
-/* Brand */
-
-.brand {
-  font-weight: 600;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
+.global-header h1{
+  font-size:34px;
+  font-weight:600;
+  letter-spacing:-0.5px;
 }
 
-.brand-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
+.status-indicator{
+  font-size:14px;
+  color:var(--green);
 }
+
+
 
 /* =====================================================
-   NAVIGATION
+   SECTIONS
    ===================================================== */
 
-.nav {
-  display: flex;
-  gap: 28px;
-  align-items: center;
-  flex-wrap: wrap;
+.section-title{
+  margin-top:50px;
+  margin-bottom:16px;
+  font-size:15px;
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:1px;
 }
 
-.nav-link {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  transition: 0.2s ease;
-  padding-bottom: 6px;
-  white-space: nowrap;
-}
 
-.nav-link:hover {
-  color: var(--text-primary);
-}
-
-.nav-link.active {
-  color: var(--accent);
-  border-bottom: 2px solid var(--accent);
-}
-
-/* =====================================================
-   MAIN CONTENT
-   ===================================================== */
-
-.main {
-  flex: 1;
-  padding: 48px;
-}
-
-/* =====================================================
-   GLOBAL MODULE
-   ===================================================== */
-
-.global-container {
-  width: 100%;
-}
-
-.global-loading {
-  padding: 80px 0;
-  text-align: center;
-  font-size: 16px;
-  color: var(--text-muted);
-}
-
-/* HEADER BLOCK */
-
-.global-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 60px;
-}
-
-.global-header h1 {
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-}
-
-/* =====================================================
-   MODE CARD
-   ===================================================== */
-
-.global-mode {
-  background: linear-gradient(
-    135deg,
-    rgba(18,26,43,0.95),
-    rgba(18,26,43,0.85)
-  );
-  padding: 24px 30px;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border-soft);
-  text-align: center;
-  min-width: 200px;
-  box-shadow: var(--shadow-soft);
-}
-
-.global-mode span {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.global-mode strong {
-  font-size: 22px;
-  font-weight: 600;
-}
-
-/* =====================================================
-   SUMMARY GRID
-   ===================================================== */
-
-.global-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 32px;
-  margin-top: 40px;
-}
-
-.summary-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: 36px;
-  border: 1px solid var(--border-soft);
-  text-align: left;
-  transition: 0.25s ease;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-}
-
-.summary-card:hover {
-  background: var(--bg-card-hover);
-  transform: translateY(-4px);
-}
-
-.summary-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 14px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.summary-value {
-  font-size: 30px;
-  font-weight: 600;
-}
 
 /* =====================================================
    GRID
    ===================================================== */
 
-.global-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 32px;
+.dashboard-grid{
+
+  display:grid;
+
+  grid-template-columns:
+  repeat(auto-fit,minmax(220px,1fr));
+
+  gap:20px;
+
 }
+
+
 
 /* =====================================================
-   CARD
+   STAT CARD
    ===================================================== */
 
-.card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  border: 1px solid var(--border-soft);
-  transition: all 0.25s ease;
+.stat-card{
+
+  background:var(--card-bg);
+
+  border-radius:var(--radius);
+
+  padding:22px;
+
+  border:1px solid var(--border-soft);
+
+  transition:0.25s ease;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+
 }
 
-.card:hover {
-  background: var(--bg-card-hover);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-soft);
+.stat-card:hover{
+
+  background:var(--card-hover);
+
+  transform:translateY(-3px);
+
+  box-shadow:var(--shadow-soft);
+
 }
 
-.card-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+
+
+/* BIG KPI */
+
+.stat-big{
+
+  grid-column:span 2;
+
+  padding:30px;
+
 }
 
-.card-value {
-  font-size: 26px;
-  font-weight: 600;
+
+
+/* LABEL */
+
+.stat-label{
+
+  font-size:11px;
+
+  color:var(--text-muted);
+
+  letter-spacing:1px;
+
+  margin-bottom:8px;
+
 }
+
+
+
+/* VALUE */
+
+.stat-value{
+
+  font-size:28px;
+
+  font-weight:600;
+
+  letter-spacing:-0.3px;
+
+}
+
+
 
 /* =====================================================
-   TABLE
+   KPI COLORS
    ===================================================== */
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+.kpi-positive{
+
+  color:var(--green);
+
+  text-shadow:0 0 10px rgba(34,197,94,0.3);
+
 }
 
-.table th,
-.table td {
-  padding: 14px 18px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-soft);
-  font-size: 14px;
+.kpi-negative{
+
+  color:var(--red);
+
 }
 
-.table th {
-  font-weight: 600;
-  color: var(--text-secondary);
-}
 
-.table tr:hover {
-  background: var(--bg-card-hover);
-}
 
 /* =====================================================
-   BADGES
+   EQUITY CHART
    ===================================================== */
 
-.badge {
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
+.chart-container{
+
+  margin-top:15px;
+
+  background:var(--card-bg);
+
+  border-radius:var(--radius);
+
+  border:1px solid var(--border-soft);
+
+  padding:25px;
+
 }
 
-.badge-success {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--success);
+
+
+/* =====================================================
+   PROGRESS BAR (WIN RATE)
+   ===================================================== */
+
+.progress-bar{
+
+  margin-top:12px;
+
+  width:100%;
+
+  height:6px;
+
+  background:#1f2937;
+
+  border-radius:4px;
+
+  overflow:hidden;
+
 }
 
-.badge-danger {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--danger);
+.progress-fill{
+
+  height:100%;
+
+  background:var(--green);
+
+  border-radius:4px;
+
+  transition:width 0.4s ease;
+
 }
 
-.badge-warning {
-  background: rgba(250, 204, 21, 0.15);
-  color: var(--warning);
+
+
+/* =====================================================
+   BUTTON
+   ===================================================== */
+
+.dashboard-actions{
+
+  margin-top:30px;
+
 }
 
-.badge-accent {
-  background: var(--accent-soft);
-  color: var(--accent);
+.refresh-btn{
+
+  padding:10px 18px;
+
+  border-radius:10px;
+
+  border:none;
+
+  background:var(--accent);
+
+  color:white;
+
+  cursor:pointer;
+
+  font-size:14px;
+
+  transition:0.2s;
+
 }
+
+.refresh-btn:hover{
+
+  transform:translateY(-1px);
+
+  box-shadow:0 6px 18px rgba(56,189,248,0.35);
+
+}
+
+
+
+/* =====================================================
+   LOADING
+   ===================================================== */
+
+.global-loader{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  height:200px;
+
+  font-size:16px;
+
+  color:var(--text-muted);
+
+}
+
+
+
+/* =====================================================
+   ERROR
+   ===================================================== */
+
+.global-error{
+
+  text-align:center;
+
+  padding:60px;
+
+}
+
+.retry-btn{
+
+  margin-top:20px;
+
+  padding:10px 18px;
+
+  border-radius:10px;
+
+  border:none;
+
+  background:var(--red);
+
+  color:white;
+
+  cursor:pointer;
+
+}
+
+
 
 /* =====================================================
    RESPONSIVE
    ===================================================== */
 
-@media (max-width: 900px) {
+@media(max-width:900px){
 
-  .header {
-    padding: 16px 20px;
-  }
-
-  .nav {
-    gap: 16px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .main {
-    padding: 24px;
-  }
-
-  .global-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .global-header h1 {
-    font-size: 24px;
-  }
-
-  .global-grid {
-    gap: 20px;
-  }
-
-  .card {
-    padding: 22px;
-  }
-
-  .card-value {
-    font-size: 22px;
-  }
-}
-/* ================= NAV IMPROVED ================= */
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.global-container{
+padding:28px;
 }
 
-.nav-icon {
-  font-size: 18px;
-  transition: 0.2s ease;
+.global-header{
+flex-direction:column;
+align-items:flex-start;
+gap:10px;
 }
 
-.nav-link.active .nav-icon {
-  transform: scale(1.2);
+.stat-big{
+grid-column:span 1;
 }
 
-.nav-label {
-  font-size: 14px;
-}
-
-/* Mobile layout nav grid */
-@media (max-width: 900px) {
-  .nav {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    text-align: center;
-  }
-
-  .nav-link {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .nav-icon {
-    font-size: 22px;
-  }
-
-  .nav-label {
-    font-size: 12px;
-  }
-}
-/* ================= MOBILE HEADER FIX ================= */
-
-@media (max-width: 900px) {
-
-  .header {
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .brand {
-    justify-content: center;
-    font-size: 20px;
-  }
-
-  .nav {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    width: 100%;
-    text-align: center;
-  }
-
-  .nav-link {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .nav-link span {
-    display: block;
-  }
-
-  .nav-link .nav-icon {
-    font-size: 24px;
-  }
-
-  .nav-link {
-    font-size: 12px;
-  }
 }
