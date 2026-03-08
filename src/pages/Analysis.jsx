@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   LineChart,
@@ -16,12 +16,8 @@ import {
 
 const API = import.meta.env.VITE_API_URL;
 
-export default function Analysis() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const queryTicker = searchParams.get("ticker");
-
-  const [ticker, setTicker] = useState(queryTicker || "");
-  const [tickers, setTickers] = useState([]);
+// Custom hook para data fetching
+const useAnalysisData = (ticker, apiUrl) => {
   const [data, setData] = useState({
     meta: null,
     prediction: null,
@@ -30,31 +26,37 @@ export default function Analysis() {
     full_latest: null
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // 1. Cargar lista de tickers disponibles
   useEffect(() => {
-    fetch(`${API}/dashboard/tickers`)
-      .then((res) => res.json())
-      .then((json) => setTickers(json?.tickers || []));
-  }, []);
+    if (!ticker) {
+      setData({ meta: null, prediction: null, historical: null, alpha: null, full_latest: null });
+      setError(null);
+      return;
+    }
 
-  // 2. Cargar datos profundos del activo seleccionado
-  useEffect(() => {
-    if (!ticker) return;
-    setSearchParams({ ticker });
-
-    async function loadData() {
+    const loadData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [resLatest, resAlpha] = await Promise.all([
-          fetch(`${API}/dashboard/latest/${ticker}`),
-          fetch(`${API}/alpha`),
+          fetch(`${apiUrl}/dashboard/latest/${ticker}`),
+          fetch(`${apiUrl}/alpha`)
         ]);
 
-        const jsonLatest = await resLatest.json();
-        const jsonAlpha = await resAlpha.json();
-        const last = jsonLatest?.latest;
+        if (!resLatest.ok) {
+          throw new Error(`Error ${resLatest.status}: ${resLatest.statusText}`);
+        }
+        if (!resAlpha.ok) {
+          throw new Error(`Error ${resAlpha.status}: ${resAlpha.statusText}`);
+        }
 
+        const [jsonLatest, jsonAlpha] = await Promise.all([
+          resLatest.json(),
+          resAlpha.json()
+        ]);
+
+        const last = jsonLatest?.latest;
         setData({
           meta: last?.meta || null,
           prediction: last?.prediction || null,
@@ -62,513 +64,342 @@ export default function Analysis() {
           alpha: jsonAlpha?.results?.[ticker] || null,
           full_latest: last || null
         });
-      } catch (e) {
-        console.error("Error cargando análisis:", e);
+      } catch (err) {
+        setError(err.message);
+        console.error("Error cargando análisis:", err);
+        setData({ meta: null, prediction: null, historical: null, alpha: null, full_latest: null });
       } finally {
         setLoading(false);
       }
-    }
+    };
+
     loadData();
+  }, [ticker, apiUrl]);
+
+  return { data, loading, error };
+};
+
+// Skeleton loading component
+const SkeletonLoader = () => (
+  <div style={{ display: "grid", gap: "20px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 0.7fr 0.8fr", gap: "20px" }}>
+      {[...Array(3)].map((_, i) => (
+        <div key={i} style={{ 
+          height: "180px", 
+          background: "#1e293b", 
+          borderRadius: 12, 
+          border: "1px solid #334155",
+          animation: "pulse 1.5s ease-in-out infinite",
+          background: "linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)",
+          backgroundSize: "200% 100%",
+        }} />
+      ))}
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+      {[...Array(2)].map((_, i) => (
+        <div key={i} style={{ 
+          height: "380px", 
+          background: "#1e293b", 
+          borderRadius: 12, 
+          border: "1px solid #334155",
+          animation: "pulse 1.5s ease-in-out infinite",
+          background: "linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)",
+          backgroundSize: "200% 100%",
+        }} />
+      ))}
+    </div>
+  </div>
+);
+
+// Error component
+const ErrorView = ({ error, onRetry }) => (
+  <div style={{ 
+    padding: 30, 
+    background: "#1e293b", 
+    borderRadius: 12, 
+    border: "1px solid #ef4444",
+    color: "#fca5a5",
+    textAlign: "center",
+    maxWidth: "600px",
+    margin: "0 auto"
+  }}>
+    <h3 style={{ color: "#ef4444", margin: "0 0 15px 0" }}>Error de Conexión</h3>
+    <p>{error}</p>
+    <button 
+      onClick={onRetry}
+      style={{
+        marginTop: 15,
+        padding: "12px 24px",
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        borderRadius: 8,
+        cursor: "pointer",
+        fontWeight: 600
+      }}
+    >
+      Reintentar
+    </button>
+  </div>
+);
+
+export default function Analysis() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryTicker = searchParams.get("ticker");
+  const [ticker, setTicker] = useState(queryTicker || "");
+  const [tickers, setTickers] = useState([]);
+
+  // Custom hooks
+  const { data, loading, error } = useAnalysisData(ticker, API);
+
+  // Cargar tickers disponibles
+  useEffect(() => {
+    fetch(`${API}/dashboard/tickers`)
+      .then(r => {
+        if (!r.ok) throw new Error('Error cargando tickers');
+        return r.json();
+      })
+      .then(j => setTickers(j?.tickers || []))
+      .catch(e => console.error('Error tickers:', e));
+  }, []);
+
+  // Sincronizar URL
+  useEffect(() => {
+    if (ticker) {
+      setSearchParams({ ticker }, { replace: true });
+    }
   }, [ticker, setSearchParams]);
 
-  // 3. Preparación de datos para Gráfico A: Validación (Histórico)
+  // Preparación optimizada de datos para charts
   const chartDataHistorical = useMemo(() => {
     if (!data.historical?.windows) return [];
     return data.historical.windows.map((w, index) => ({
       name: `W${index + 1}`,
-      real: (w.ret_real * 100).toFixed(2),
-      pred: (w.ret_pred * 100).toFixed(2),
+      real: Number((w.ret_real * 100).toFixed(2)),
+      pred: Number((w.ret_pred * 100).toFixed(2))
     }));
   }, [data.historical]);
 
-  // 4. Preparación de datos para Gráfico B: Proyección Futura con Banda de Incertidumbre
   const chartDataFuture = useMemo(() => {
     if (!data.prediction || !data.full_latest) return [];
 
     const priceNow = data.prediction.price_now;
-    const finalPrice = data.prediction.price_pred;
     const curve = data.full_latest.price_curve;
     const hitRate = data.historical?.hit_rate_mean ?? 0.5;
 
-    const rows = [];
-    rows.push({
+    const rows = [{
       day: 0,
       label: "Hoy",
       price: priceNow,
-      upper: priceNow,
-      lower: priceNow
-    });
+      u50: priceNow, l50: priceNow,
+      u70: priceNow, l70: priceNow,
+      u90: priceNow, l90: priceNow
+    }];
 
     if (curve?.price_path) {
       curve.price_path.forEach((p, i) => {
         const day = i + 1;
-        const uncertainty = p * (1 - hitRate) * 0.05 * (day / 10);
+        const baseVol = p * (1 - hitRate) * 0.04 * Math.min(day / 10, 1);
         rows.push({
           day,
           label: `T+${day}`,
           price: p,
-          upper: p + uncertainty,
-          lower: p - uncertainty
+          u50: p + baseVol * 0.6,
+          l50: p - baseVol * 0.6,
+          u70: p + baseVol * 1.0,
+          l70: p - baseVol * 1.0,
+          u90: p + baseVol * 1.6,
+          l90: p - baseVol * 1.6
         });
       });
     }
 
-    const finalUncertainty = finalPrice * (1 - hitRate) * 0.05;
-    rows.push({
-      day: 10,
-      label: "T+10",
-      price: finalPrice,
-      upper: finalPrice + finalUncertainty,
-      lower: finalPrice - finalUncertainty
-    });
-
     return rows;
   }, [data.prediction, data.full_latest, data.historical]);
 
-  // Helper: Detección de mercado chileno
   const isChile = ticker.endsWith(".SN") || ticker.endsWith(".CL");
 
+  const handleTickerChange = useCallback((e) => {
+    setTicker(e.target.value);
+  }, []);
+
+  // Estados de carga
+  if (error && !loading) {
+    return (
+      <div style={{ padding: "20px", background: "#0f172a", minHeight: "100vh", color: "white", fontFamily: "system-ui" }}>
+        <ErrorView error={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        padding: "20px",
-        background: "#0f172a",
-        minHeight: "100vh",
-        color: "white",
-        fontFamily: "system-ui, -apple-system, sans-serif"
-      }}
-    >
-      {/* HEADER SECTION */}
-      <div style={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center", 
-        marginBottom: "25px" 
-      }}>
+    <div style={{ padding: "20px", background: "#0f172a", minHeight: "100vh", color: "white", fontFamily: "system-ui" }}>
+      <style>{`
+        @keyframes pulse {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 25, alignItems: "center" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.8rem" }}>
-            Terminal de Análisis: {ticker || "---"}
-          </h1>
+          <h1 style={{ margin: 0, fontSize: "1.8rem" }}>Terminal de Análisis: {ticker || "---"}</h1>
           <p style={{ color: "#94a3b8", margin: "5px 0" }}>
-            {isChile ? "Mercado Local Chileno 🇨🇱" : "Mercado Internacional 🌎"} | Predictivo v3.0
+            {isChile ? "Mercado Chileno 🇨🇱" : "Mercado Internacional 🌎"} | Predictivo v3.1
           </p>
         </div>
 
         <select
           value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
+          onChange={handleTickerChange}
+          disabled={loading}
           style={{ 
             padding: "10px 15px", 
-            borderRadius: "8px", 
-            backgroundColor: "#1e293b", 
+            borderRadius: 8, 
+            background: loading ? "#334155" : "#1e293b", 
             color: "white", 
-            border: "1px solid #334155",
-            fontSize: "14px"
+            border: "1px solid #334155", 
+            cursor: loading ? "not-allowed" : "pointer",
+            minWidth: "200px"
           }}
         >
-          <option value="">Seleccionar Activo...</option>
-          {tickers.map((t) => (
+          <option value="">Seleccionar activo</option>
+          {tickers.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
       </div>
 
-      {loading && (
-        <div style={{ 
-          color: "#fbbf24", 
-          textAlign: "center", 
-          padding: "20px",
-          fontSize: "1.1rem"
-        }}>
-          Sincronizando modelos neuronales...
-        </div>
-      )}
-
-      {!loading && data.prediction && (
+      {loading && !data.prediction ? (
+        <SkeletonLoader />
+      ) : data.prediction ? (
         <div style={{ display: "grid", gap: "20px" }}>
-          
-          {/* FILA 1: KPIs CLAVE */}
+          {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 0.7fr 0.8fr", gap: "20px" }}>
             <BloqueResumen prediction={data.prediction} isChile={isChile} />
             <BloqueAlphaScore alphaData={data.alpha} />
             <BloqueRobustez historical={data.historical} />
           </div>
 
-          {/* FILA 2: GRÁFICOS (PASADO VS FUTURO) */}
+          {/* CHARTS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            
-            {/* Gráfico de Validación (Mide qué tan bien ha funcionado el modelo) */}
-            <div style={{ 
-              background: "#1e293b",
-              padding: "20px", 
-              borderRadius: "12px", 
-              border: "1px solid #334155",
-              height: "400px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-                <h2 style={{ fontSize: "1.1rem", margin: 0 }}>Backtest: Real vs. Predicho</h2>
-                <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>Retorno por ventana %</span>
-              </div>
-              <ResponsiveContainer width="100%" height="85%">
-                <LineChart data={chartDataHistorical}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={10} unit="%" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: "#0f172a", 
-                      border: "1px solid #334155",
-                      borderRadius: "8px" 
-                    }} 
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: "12px" }} />
-                  <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
-                  <Line 
-                    name="Real" 
-                    type="monotone" 
-                    dataKey="real" 
-                    stroke="#38bdf8" 
-                    strokeWidth={3} 
-                    dot={false} 
-                  />
-                  <Line 
-                    name="Modelo" 
-                    type="monotone" 
-                    dataKey="pred" 
-                    stroke="#fbbf24" 
-                    strokeWidth={3} 
-                    strokeDasharray="5 5" 
-                    dot={false} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Gráfico de Proyección con Banda de Incertidumbre */}
-            <div style={{ 
-              background: "linear-gradient(145deg, #1e293b, #0f172a)",
-              padding: "20px", 
-              borderRadius: "12px", 
-              border: "1px solid #334155",
-              height: "400px"
-            }}>
-              <h2 style={{ 
-                fontSize: "1.1rem", 
-                margin: "0 0 15px 0", 
-                color: "#fbbf24" 
-              }}>
-                Proyección con Banda de Incertidumbre
-              </h2>
-              <ResponsiveContainer width="100%" height="85%">
-                <AreaChart data={chartDataFuture}>
-                  <defs>
-                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
-                  <YAxis 
-                    stroke="#94a3b8" 
-                    fontSize={11} 
-                    tickFormatter={(v) =>
-                      isChile
-                        ? `$${Math.round(v).toLocaleString("es-CL")}`
-                        : `$${v.toFixed(2)}`
-                    }
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#0f172a",
-                      border: "1px solid #334155",
-                      borderRadius: "8px"
-                    }}
-                    formatter={(v, name) => {
-                      if (name === "price")
-                        return [`$${v.toFixed(2)}`, "Precio"];
-                      if (name === "upper")
-                        return [`$${v.toFixed(2)}`, "Banda superior"];
-                      if (name === "lower")
-                        return [`$${v.toFixed(2)}`, "Banda inferior"];
-                      return [v, name];
-                    }}
-                  />
-                  {/* Banda superior */}
-                  <Area
-                    type="monotone"
-                    dataKey="upper"
-                    stroke="none"
-                    fill="#fbbf24"
-                    fillOpacity={0.07}
-                  />
-                  {/* Banda inferior */}
-                  <Area
-                    type="monotone"
-                    dataKey="lower"
-                    stroke="none"
-                    fill="#1e293b"
-                  />
-                  {/* Línea principal de predicción */}
-                  <Area
-                    type="monotone"
-                    dataKey="price"
-                    stroke="#fbbf24"
-                    strokeWidth={3}
-                    fill="url(#priceGradient)"
-                    dot={(props) => {
-                      const { cx, cy, payload } = props;
-                      if (payload.day === 0) {
-                        return (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={6}
-                            fill="#38bdf8"
-                            stroke="white"
-                            strokeWidth={2}
-                          />
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <ReferenceLine
-                    y={data.prediction.price_now}
-                    stroke="#475569"
-                    strokeDasharray="3 3"
-                    label={{ position: "top", fill: "#94a3b8", fontSize: 11 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* FILA 3: DETALLES TÉCNICOS */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            <BloqueAlphaDetalle alphaData={data.alpha} />
-            <BloqueConfiguracion meta={data.meta} />
+            <ChartBacktest data={chartDataHistorical} />
+            <ChartForecastCone data={chartDataFuture} prediction={data.prediction} isChile={isChile} />
           </div>
         </div>
-      )}
-
-      {!loading && !data.prediction && ticker && (
-        <div style={{ 
-          textAlign: "center", 
-          color: "#94a3b8", 
-          padding: "40px",
-          fontSize: "1.1rem"
-        }}>
-          No se encontraron datos para {ticker}. Selecciona otro activo.
+      ) : (
+        <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>
+          Selecciona un activo para comenzar el análisis
         </div>
       )}
     </div>
   );
 }
 
-// --- SUB-COMPONENTES AUXILIARES ---
-
-function BloqueResumen({ prediction, isChile }) {
-  const isBuy = prediction.recommendation === "COMPRA";
-  const color = isBuy 
-    ? "#22c55e" 
-    : prediction.recommendation === "VENTA" 
-    ? "#ef4444" 
-    : "#eab308";
-
+// Componentes optimizados con React.memo
+const BloqueResumen = React.memo(({ prediction, isChile }) => {
+  const color = prediction.recommendation === "COMPRA" ? "#22c55e" : 
+                prediction.recommendation === "VENTA" ? "#ef4444" : "#eab308";
+  
   return (
-    <div style={{ 
-      padding: "20px", 
-      background: "#1e293b",
-      borderRadius: "12px", 
-      border: "1px solid #334155",
-      borderLeft: `6px solid ${color}`
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-        <h2 style={{ fontSize: "0.9rem", color: "#94a3b8", margin: 0 }}>RECOMENDACIÓN</h2>
-        <span style={{ fontWeight: "900", color: color, fontSize: "1.1rem" }}>
-          {prediction.recommendation}
-        </span>
+    <div style={{ padding: 20, background: "#1e293b", borderRadius: 12, borderLeft: `6px solid ${color}`, borderTop: "1px solid #334155" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 15 }}>
+        <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>RECOMENDACIÓN</span>
+        <strong style={{ color, fontSize: "1.2rem" }}>{prediction.recommendation}</strong>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
-        <Metric label="Retorno Obj." value={formatPct(prediction.ret_ens_pct)} color={color} strong />
-        <Metric label="Precio Obj." value={formatMoney(prediction.price_pred, isChile)} strong />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15 }}>
+        <Metric label="Retorno Obj." value={formatPct(prediction.ret_ens_pct)} color={color} />
+        <Metric label="Precio Obj." value={formatMoney(prediction.price_pred, isChile)} />
         <Metric label="Precio Actual" value={formatMoney(prediction.price_now, isChile)} />
       </div>
     </div>
   );
-}
+});
 
-function BloqueAlphaScore({ alphaData }) {
+const BloqueAlphaScore = React.memo(({ alphaData }) => {
   const score = alphaData?.alpha_score ?? 0;
   const color = score >= 0.65 ? "#22c55e" : score >= 0.5 ? "#eab308" : "#ef4444";
   
   return (
-    <div style={{ 
-      padding: "20px", 
-      background: "#1e293b",
-      borderRadius: "12px", 
-      border: "1px solid #334155",
-      textAlign: "center"
-    }}>
-      <h2 style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 10px 0" }}>ALPHA SCORE</h2>
-      <div style={{ fontSize: "3rem", fontWeight: "900", color: color, margin: "10px 0" }}>
-        {score.toFixed(3)}
-      </div>
-      <div style={{ height: "8px", background: "#334155", borderRadius: "4px" }}>
-        <div style={{ 
-          width: `${score * 100}%`, 
-          height: "100%", 
-          background: color, 
-          borderRadius: "4px",
-          transition: "width 0.3s ease"
-        }} />
+    <div style={{ padding: 20, background: "#1e293b", borderRadius: 12, textAlign: "center", border: "1px solid #334155" }}>
+      <div style={{ color: "#94a3b8", fontSize: "0.8rem", marginBottom: 10 }}>ALPHA SCORE</div>
+      <div style={{ fontSize: "2.5rem", fontWeight: 900, color }}>{score.toFixed(3)}</div>
+      <div style={{ height: 4, background: "#0f172a", borderRadius: 2, marginTop: 10 }}>
+        <div style={{ width: `${Math.min(score * 100, 100)}%`, height: "100%", background: color, borderRadius: 2 }} />
       </div>
     </div>
   );
-}
+});
 
-function BloqueRobustez({ historical }) {
+const BloqueRobustez = React.memo(({ historical }) => {
   const hit = (historical?.hit_rate_mean ?? 0) * 100;
   return (
-    <div style={{ 
-      padding: "20px", 
-      background: "#1e293b",
-      borderRadius: "12px", 
-      border: "1px solid #334155"
-    }}>
-      <h2 style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 15px 0" }}>
-        ROBUSTEZ (BACKTEST)
-      </h2>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "10px" }}>
-        <span>Ventanas calculadas:</span>
-        <span style={{ fontWeight: "bold", color: "white" }}>{historical?.n_windows || 0}</span>
-      </div>
-      <Metric 
-        label="Hit Rate Total" 
-        value={`${hit.toFixed(1)}%`} 
-        color={hit > 50 ? "#22c55e" : "#ef4444"} 
-        strong 
-      />
-    </div>
-  );
-}
-
-function BloqueAlphaDetalle({ alphaData }) {
-  const c = alphaData?.components || {};
-  return (
-    <div style={{ 
-      padding: "20px", 
-      background: "#1e293b",
-      borderRadius: "12px", 
-      border: "1px solid #334155"
-    }}>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: "20px", color: "#f8fafc" }}>
-        Atribución de Alpha
-      </h2>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <SmallMetric label="Market Factor" value={c.market} />
-        <SmallMetric label="Fundamentals" value={c.fundamental} />
-        <SmallMetric label="Structural" value={c.structural} />
-        <SmallMetric label="Confidence" value={c.confidence} />
+    <div style={{ padding: 20, background: "#1e293b", borderRadius: 12, border: "1px solid #334155" }}>
+      <div style={{ color: "#94a3b8", fontSize: "0.8rem", marginBottom: 10 }}>ROBUSTEZ MODELO</div>
+      <Metric label="Hit Rate" value={`${hit.toFixed(1)}%`} color={hit > 50 ? "#22c55e" : "#ef4444"} />
+      <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: 5 }}>
+        Basado en {historical?.n_windows || 0} ventanas
       </div>
     </div>
   );
-}
+});
 
-function BloqueConfiguracion({ meta }) {
-  return (
-    <div style={{ 
-      padding: "20px", 
-      border: "1px dashed #334155", 
-      backgroundColor: "#1e293b",
-      borderRadius: "12px"
-    }}>
-      <h2 style={{ 
-        fontSize: "1.1rem", 
-        color: "#94a3b8", 
-        marginBottom: "20px" 
-      }}>
-        Hiperparámetros
-      </h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "15px" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "5px" }}>H-DAYS</div>
-          <div style={{ fontWeight: "bold", fontSize: "1.2rem" }}>{meta?.horizon_days || "—"}</div>
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "5px" }}>THETA</div>
-          <div style={{ fontWeight: "bold", fontSize: "1.2rem" }}>{meta?.theta || "—"}</div>
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "5px" }}>K-NN</div>
-          <div style={{ fontWeight: "bold", fontSize: "1.2rem" }}>{meta?.k_neighbors || "—"}</div>
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "5px" }}>ALPHA</div>
-          <div style={{ fontWeight: "bold", fontSize: "1.2rem" }}>{meta?.alpha || "—"}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const ChartBacktest = React.memo(({ data }) => (
+  <div style={{ background: "#1e293b", padding: 20, borderRadius: 12, border: "1px solid #334155" }}>
+    <h2 style={{ fontSize: "1.1rem", marginBottom: 15 }}>Backtest: Real vs Predicho</h2>
+    <ResponsiveContainer width="100%" height={320}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+        <YAxis stroke="#94a3b8" fontSize={12} unit="%" />
+        <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155" }} />
+        <Legend />
+        <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
+        <Line name="Real" dataKey="real" stroke="#38bdf8" strokeWidth={3} dot={false} />
+        <Line name="Predicho" dataKey="pred" stroke="#fbbf24" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+));
 
-// --- HELPERS ---
+const ChartForecastCone = React.memo(({ data, prediction, isChile }) => (
+  <div style={{ background: "#1e293b", padding: 20, borderRadius: 12, border: "1px solid #334155" }}>
+    <h2 style={{ fontSize: "1.1rem", marginBottom: 15, color: "#fbbf24" }}>Forecast Cone (Goldman Style)</h2>
+    <ResponsiveContainer width="100%" height={320}>
+      <AreaChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+        <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
+        <YAxis 
+          stroke="#94a3b8" 
+          fontSize={12} 
+          domain={['auto', 'auto']}
+          tickFormatter={(v) => isChile ? `$${Math.round(v).toLocaleString("es-CL")}` : `$${v.toFixed(2)}`}
+        />
+        <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155" }} />
+        
+        <Area dataKey="u90" stroke="none" fill="#fbbf24" fillOpacity={0.05} baseLine={d => d.l90} />
+        <Area dataKey="u70" stroke="none" fill="#fbbf24" fillOpacity={0.10} baseLine={d => d.l70} />
+        <Area dataKey="u50" stroke="none" fill="#fbbf24" fillOpacity={0.18} baseLine={d => d.l50} />
+        <Area name="Precio Predicho" dataKey="price" stroke="#fbbf24" strokeWidth={3} fill="none" dot={false} />
+        <ReferenceLine y={prediction.price_now} stroke="#475569" strokeDasharray="3 3" label={{ position: 'left', fill: '#94a3b8', value: 'Hoy', fontSize: 10 }} />
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+));
 
-function Metric({ label, value, color, strong }) {
-  return (
-    <div>
-      <div style={{ 
-        fontSize: "0.7rem", 
-        color: "#94a3b8", 
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-        marginBottom: "4px"
-      }}>
-        {label}
-      </div>
-      <div style={{ 
-        color: color || "#f8fafc", 
-        fontWeight: strong ? 900 : 600, 
-        fontSize: strong ? "1.5rem" : "1.1rem" 
-      }}>
-        {value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-function SmallMetric({ label, value }) {
-  return (
-    <div style={{ 
-      display: "flex", 
-      justifyContent: "space-between", 
-      padding: "12px", 
-      backgroundColor: "#0f172a", 
-      borderRadius: "8px",
-      border: "1px solid #334155"
-    }}>
-      <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>{label}</span>
-      <span style={{ 
-        fontWeight: "bold", 
-        fontSize: "0.9rem",
-        minWidth: "50px",
-        textAlign: "right"
-      }}>
-        {value?.toFixed(3) ?? "—"}
-      </span>
-    </div>
-  );
-}
+const Metric = React.memo(({ label, value, color }) => (
+  <div style={{ marginBottom: 8 }}>
+    <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>{label}</div>
+    <div style={{ fontWeight: 700, fontSize: "1.1rem", color: color || "white" }}>{value}</div>
+  </div>
+));
 
 function formatMoney(v, isChile) {
   if (v == null) return "—";
   return isChile 
-    ? "$" + Math.round(v).toLocaleString("es-CL")
-    : "$" + Number(v).toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-      });
+    ? "$" + Math.round(v).toLocaleString("es-CL") 
+    : "$" + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatPct(v) {
