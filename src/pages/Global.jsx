@@ -9,7 +9,7 @@ import {
   Tooltip
 } from "recharts";
 
-import "./Global.css";
+import "../styles/global.css";
 
 const API = import.meta.env.VITE_API_URL;
 
