@@ -1,270 +1,327 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useTransition } from "react";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip
+} from "recharts";
+
+import "./Global.css";
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Global() {
 
   const [market,setMarket] = useState(null)
-  const [marketError,setMarketError] = useState(null)
-  const [marketLoading,setMarketLoading] = useState(true)
-
   const [perf,setPerf] = useState(null)
-  const [perfError,setPerfError] = useState(null)
-  const [perfLoading,setPerfLoading] = useState(true)
+  const [equity,setEquity] = useState([])
 
-  useEffect(()=>{
-    loadMarket()
-    loadPerformance()
+  const [marketError,setMarketError] = useState(null)
+  const [perfError,setPerfError] = useState(null)
+
+  const [loading,setLoading] = useState(true)
+
+  const [isPending,startTransition] = useTransition()
+
+
+  const loadData = useCallback(async()=>{
+
+    setLoading(true)
+
+    try{
+
+      const [marketRes,perfRes,equityRes] = await Promise.allSettled([
+
+        fetch(`${API}/dashboard/market-context`,{cache:"no-store"}),
+
+        fetch(`${API}/dashboard/performance`,{cache:"no-store"}),
+
+        fetch(`${API}/dashboard/equity-curve`,{cache:"no-store"})
+
+      ])
+
+
+      if(marketRes.status==="fulfilled" && marketRes.value.ok){
+
+        setMarket(await marketRes.value.json())
+
+      }else{
+
+        setMarketError("Error mercado")
+
+      }
+
+
+      if(perfRes.status==="fulfilled" && perfRes.value.ok){
+
+        setPerf(await perfRes.value.json())
+
+      }else{
+
+        setPerfError("Error performance")
+
+      }
+
+
+      if(equityRes.status==="fulfilled" && equityRes.value.ok){
+
+        const data = await equityRes.value.json()
+
+        setEquity(data?.curve || [])
+
+      }
+
+    }catch(e){
+
+      console.error("Dashboard error",e)
+
+    }finally{
+
+      setLoading(false)
+
+    }
+
   },[])
 
 
-  async function loadMarket(){
+  useEffect(()=>{
 
-    try{
+    loadData()
 
-      setMarketLoading(true)
-      setMarketError(null)
+  },[loadData])
 
-      const res = await fetch(`${API}/dashboard/market-context`,{
-        cache:"no-store",
-        headers:{Accept:"application/json"}
-      })
 
-      if(!res.ok) throw new Error(`HTTP ${res.status}`)
+  const handleRefresh = ()=>{
 
-      const json = await res.json()
-
-      setMarket(json)
-
-    }catch(e){
-
-      setMarketError(e.message)
-
-    }finally{
-
-      setMarketLoading(false)
-
-    }
+    startTransition(()=>loadData())
 
   }
 
 
-  async function loadPerformance(){
+  if(loading){
 
-    try{
-
-      setPerfLoading(true)
-      setPerfError(null)
-
-      const res = await fetch(`${API}/dashboard/performance`,{
-        cache:"no-store",
-        headers:{Accept:"application/json"}
-      })
-
-      if(!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const json = await res.json()
-
-      setPerf(json)
-
-    }catch(e){
-
-      setPerfError(e.message)
-
-    }finally{
-
-      setPerfLoading(false)
-
-    }
+    return <LoadingSkeleton/>
 
   }
 
 
+  const equityNow = perf?.equity ?? 0
 
-  return (
+  const totalReturn = Number(perf?.total_return_pct ?? 0)
+
+  const drawdown = Number(perf?.drawdown_pct ?? 0)
+
+  const winRate = Number(perf?.win_rate_pct ?? 0)
+
+
+  return(
 
 <div className="global-container">
 
-<div className="global-header">
+
+<header className="global-header">
+
 <h1>Resumen Global del Sistema</h1>
+
+<div className="status-indicator">
+
+● {isPending ? "Sincronizando..." : "En línea"}
+
+</div>
+
+</header>
+
+
+{/* ================= KPIs PRINCIPALES ================= */}
+
+<SectionTitle title="KPIs Principales"/>
+
+<div className="dashboard-grid">
+
+<StatCard
+label="CAPITAL TOTAL"
+value={`$${Math.round(equityNow).toLocaleString()}`}
+big
+/>
+
+<StatCard
+label="RETORNO TOTAL"
+value={`${totalReturn.toFixed(2)}%`}
+color={totalReturn>=0 ? "#22c55e" : "#ef4444"}
+big
+/>
+
 </div>
 
 
-{/* ================= CONTEXTO MERCADO ================= */}
 
-<SectionTitle title="Contexto de Mercado"/>
+{/* ================= EQUITY CURVE ================= */}
 
-<div className="global-summary">
+{equity.length>0 && (
 
-<SummaryCard
-label="Modo de Mercado"
-loading={marketLoading}
-error={marketError}
-value={market?.market_mode ? market.market_mode.toUpperCase() : null}
+<>
+
+<SectionTitle title="Equity Curve"/>
+
+<div className="chart-container">
+
+<ResponsiveContainer width="100%" height={280}>
+
+<LineChart data={equity}>
+
+<CartesianGrid strokeDasharray="3 3" stroke="#334155"/>
+
+<XAxis dataKey="date" stroke="#94a3b8"/>
+
+<YAxis stroke="#94a3b8"/>
+
+<Tooltip/>
+
+<Line
+type="monotone"
+dataKey="equity"
+stroke="#38bdf8"
+strokeWidth={3}
+dot={false}
 />
 
-<SummaryCard
-label="Confianza del Régimen"
-loading={marketLoading}
-error={marketError}
+</LineChart>
+
+</ResponsiveContainer>
+
+</div>
+
+</>
+
+)}
+
+
+
+{/* ================= ESTADO DEL SISTEMA ================= */}
+
+<SectionTitle title="Estado del Sistema"/>
+
+<div className="dashboard-grid">
+
+<StatCard
+label="MODO MERCADO"
+value={market?.market_mode?.toUpperCase() || "—"}
+/>
+
+<StatCard
+label="CONFIANZA RÉGIMEN"
 value={
 market?.confidence!=null
 ?`${Math.round(market.confidence*100)}%`
-:null
+:"—"
 }
 />
 
-</div>
-
-
-
-{/* ================= PERFORMANCE DEL SISTEMA ================= */}
-
-<SectionTitle title="Performance del Sistema"/>
-
-<div className="global-summary">
-
-<SummaryCard
-label="Capital Actual"
-loading={perfLoading}
-error={perfError}
+<StatCard
+label="HIGH WATER MARK"
 value={
-perf?.equity!=null
-?`$${Math.round(perf.equity).toLocaleString()}`
-:null
-}
-/>
-
-<SummaryCard
-label="Retorno Total"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.total_return_pct!=null
-?`${perf.total_return_pct}%`
-:null
-}
-color={
-perf?.total_return_pct>0
-?"#22c55e"
-:"#ef4444"
-}
-/>
-
-<SummaryCard
-label="High Water Mark"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.high_water_mark!=null
+perf?.high_water_mark
 ?`$${Math.round(perf.high_water_mark).toLocaleString()}`
-:null
+:"—"
 }
 />
 
-<SummaryCard
-label="Sistema Activo Desde"
-loading={perfLoading}
-error={perfError}
-value={perf?.since ?? null}
+<StatCard
+label="ACTIVO DESDE"
+value={perf?.since || "—"}
 />
 
 </div>
 
 
 
-{/* ================= RENDIMIENTO HISTÓRICO ================= */}
+{/* ================= RIESGO ================= */}
 
-<SectionTitle title="Rendimiento Histórico"/>
+<SectionTitle title="Riesgo del Sistema"/>
 
-<div className="global-summary">
+<div className="dashboard-grid">
 
-<SummaryCard
-label="Drawdown Actual"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.drawdown_pct!=null
-?`${perf.drawdown_pct}%`
-:null
-}
+<StatCard
+label="DRAWDOWN ACTUAL"
+value={`${drawdown.toFixed(2)}%`}
 color="#f97316"
 />
 
-<SummaryCard
-label="Máximo Drawdown Histórico"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.max_drawdown_pct!=null
-?`${perf.max_drawdown_pct}%`
-:null
-}
+<StatCard
+label="MAX DRAWDOWN"
+value={`${Number(perf?.max_drawdown_pct ?? 0).toFixed(2)}%`}
 />
 
-<SummaryCard
-label="Ratio Sharpe"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.sharpe_ratio!=null
-?perf.sharpe_ratio.toFixed(2)
-:null
-}
+<StatCard
+label="RATIO SHARPE"
+value={Number(perf?.sharpe_ratio ?? 0).toFixed(2)}
 />
 
 </div>
 
 
 
-{/* ================= CALIDAD DEL MODELO ================= */}
+{/* ================= CALIDAD MODELO ================= */}
 
 <SectionTitle title="Calidad del Modelo"/>
 
-<div className="global-summary">
+<div className="dashboard-grid">
 
-<SummaryCard
-label="Tasa de Acierto Histórica"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.win_rate_pct!=null
-?`${perf.win_rate_pct}%`
-:null
-}
+<div className="stat-card">
+
+<span className="stat-label">WIN RATE</span>
+
+<div className="stat-value">
+
+{winRate.toFixed(1)}%
+
+</div>
+
+<div className="progress-bar">
+
+<div
+className="progress-fill"
+style={{width:`${winRate}%`}}
 />
 
-<SummaryCard
-label="Error Promedio de Predicción"
-loading={perfLoading}
-error={perfError}
-value={
-perf?.avg_prediction_error_pct!=null
-?`${perf.avg_prediction_error_pct}%`
-:null
-}
+</div>
+
+</div>
+
+
+<StatCard
+label="ERROR PREDICCIÓN"
+value={`${Number(perf?.avg_prediction_error_pct ?? 0).toFixed(1)}%`}
 />
 
-<SummaryCard
-label="Total de Predicciones Generadas"
-loading={perfLoading}
-error={perfError}
-value={perf?.total_predictions ?? null}
+<StatCard
+label="PREDICCIONES"
+value={perf?.evaluated_predictions ?? 0}
 />
 
-<SummaryCard
-label="Predicciones Evaluadas"
-loading={perfLoading}
-error={perfError}
-value={perf?.evaluated_predictions ?? null}
+<StatCard
+label="PENDIENTES"
+value={perf?.pending_predictions ?? 0}
 />
 
-<SummaryCard
-label="Predicciones Pendientes"
-loading={perfLoading}
-error={perfError}
-value={perf?.pending_predictions ?? null}
-/>
+</div>
+
+
+
+<div className="dashboard-actions">
+
+<button
+onClick={handleRefresh}
+className="refresh-btn"
+disabled={isPending}
+>
+
+{isPending ? "Sincronizando..." : "Actualizar"}
+
+</button>
 
 </div>
 
@@ -277,47 +334,62 @@ value={perf?.pending_predictions ?? null}
 
 
 
-/* ===================================================== */
-
 function SectionTitle({title}){
 
 return(
-<h2 style={{marginTop:40,marginBottom:15}}>
+
+<h2 className="section-title">
+
 {title}
+
 </h2>
+
 )
 
 }
 
 
 
-/* ===================================================== */
-
-function SummaryCard({label,value,loading,error,color}){
+function StatCard({label,value,color="#ffffff",big=false}){
 
 return(
 
-<div className="summary-card">
+<div className={`stat-card ${big ? "stat-big":""}`}>
 
-<div className="summary-label">{label}</div>
+<span className="stat-label">
 
-{loading && (
-<div className="summary-value" style={{opacity:0.6}}>
-Cargando...
+{label}
+
+</span>
+
+<div
+className="stat-value"
+style={{color}}
+>
+
+{value}
+
 </div>
-)}
 
-{!loading && error && (
-<div className="summary-value" style={{color:"#ef4444"}}>
-Error: {error}
 </div>
-)}
 
-{!loading && !error && (
-<div className="summary-value" style={{color:color || "white"}}>
-{value ?? "—"}
+)
+
+}
+
+
+
+function LoadingSkeleton(){
+
+return(
+
+<div className="global-container">
+
+<div className="global-loader">
+
+Sincronizando sistema...
+
 </div>
-)}
 
 </div>
 
