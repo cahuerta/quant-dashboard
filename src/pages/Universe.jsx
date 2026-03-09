@@ -19,6 +19,19 @@ function colorConf(c) {
   if (c >= 0.50) return "#eab308";
   return "#ef4444";
 }
+function reasonLabel(reason) {
+
+  if (!reason) return "—";
+
+  const map = {
+    alpha_below_threshold: "Alpha bajo threshold",
+    liquidity_gate_triggered: "Liquidez insuficiente",
+    kill_switch: "Kill switch",
+    no_alpha: "Sin alpha"
+  };
+
+  return map[reason] || reason;
+}
 
 // =========================
 // COMPONENT
@@ -103,6 +116,7 @@ export default function Universe() {
             <th>Confianza</th>
             <th>Posición</th>
             <th>Ejecutable</th>
+            <th>Motivo</th>
           </tr>
         </thead>
 
@@ -148,6 +162,9 @@ export default function Universe() {
 
               <td style={{ fontWeight: 800 }}>
                 {r.executable ? "✅" : "❌"}
+              </td>
+              <td style={{ color: "#94a3b8" }}>
+                {reasonLabel(r.block_reason)}
               </td>
 
             </tr>
