@@ -11,13 +11,11 @@ function colorReturn(v) {
   return v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : "#94a3b8";
 }
 
-function statusBadge(type) {
-  if (type === "correct")
+function statusBadge(value) {
+  if (value === true)
     return <span style={{ color: "#22c55e", fontWeight: 700 }}>✔ Correcto</span>;
-
-  if (type === "incorrect")
+  if (value === false)
     return <span style={{ color: "#ef4444", fontWeight: 700 }}>✖ Incorrecto</span>;
-
   return <span style={{ color: "#94a3b8" }}>Pendiente</span>;
 }
 
@@ -41,11 +39,8 @@ export default function PositionsLive() {
         setLoading(true);
         setError(null);
 
-        // 1️⃣ Posiciones reales
-        const pRes = await fetch(`${API}/trading/positions`, {
-          cache: "no-store",
-        });
-
+        // 1️⃣ Posiciones reales desde Alpaca
+        const pRes = await fetch(`${API}/trading/positions`, { cache: "no-store" });
         if (!pRes.ok) throw new Error("Error cargando posiciones");
 
         const positions = await pRes.json();
@@ -55,39 +50,31 @@ export default function PositionsLive() {
           tickers.map(async (ticker) => {
             const pos = positions[ticker];
 
-            let lastPrediction = null;
-            let modelCorrect = null;
+            const entryPrice   = pos.avg_entry_price;
+            const marketValue  = pos.market_value;
+            const qty          = pos.qty;
+            const currentPrice = marketValue / qty;
+            const currentReturn =
+              entryPrice > 0 ? (currentPrice / entryPrice - 1) * 100 : null;
 
-            // 2️⃣ Última predicción
+            // 2️⃣ Última predicción del modelo
+            let lastPrediction = null;
             try {
               const lRes = await fetch(`${API}/dashboard/latest/${ticker}`);
               if (lRes.ok) {
                 const lJson = await lRes.json();
-                lastPrediction =
-                  lJson?.latest?.prediction?.ret_ens_pct ?? null;
+                lastPrediction = lJson?.latest?.prediction?.ret_ens_pct ?? null;
               }
             } catch {}
 
-            // 3️⃣ Última evaluación
-            try {
-              const eRes = await fetch(
-                `${API}/dashboard/evaluation-latest/${ticker}`
-              );
-              if (eRes.ok) {
-                const eJson = await eRes.json();
-                modelCorrect =
-                  eJson?.evaluation?.decision_correct ?? null;
-              }
-            } catch {}
-
-            const entryPrice = pos.avg_entry_price;
-            const marketValue = pos.market_value;
-            const qty = pos.qty;
-
-            const currentPrice = marketValue / qty;
-            const currentReturn =
-              entryPrice > 0
-                ? ((currentPrice / entryPrice - 1) * 100)
+            // 3️⃣ ¿Modelo acertó?
+            // Compara dirección predicha vs retorno real desde precio de entrada.
+            // Siempre en tiempo real, sin depender de evaluaciones guardadas.
+            const modelCorrect =
+              lastPrediction != null && currentReturn != null
+                ? lastPrediction > 0
+                  ? currentReturn >= 0  // predijo subida → ¿subió?
+                  : currentReturn <= 0  // predijo bajada → ¿bajó?
                 : null;
 
             return {
@@ -116,39 +103,27 @@ export default function PositionsLive() {
   }, []);
 
   const summary = useMemo(() => {
-    const total = rows.length;
-
-    const correct = rows.filter(r => r.modelCorrect === true).length;
-    const incorrect = rows.filter(r => r.modelCorrect === false).length;
-
-    const totalPL = rows.reduce(
-      (acc, r) => acc + (r.unrealizedPL || 0),
-      0
-    );
-
-    return {
-      total,
-      correct,
-      incorrect,
-      totalPL,
-    };
+    const total     = rows.length;
+    const correct   = rows.filter((r) => r.modelCorrect === true).length;
+    const incorrect = rows.filter((r) => r.modelCorrect === false).length;
+    const totalPL   = rows.reduce((acc, r) => acc + (r.unrealizedPL || 0), 0);
+    return { total, correct, incorrect, totalPL };
   }, [rows]);
 
   if (loading) return <div className="global-loading">Cargando...</div>;
-  if (error) return <div className="global-loading">{error}</div>;
+  if (error)   return <div className="global-loading">{error}</div>;
 
   return (
     <div className="global-container">
       <div className="global-header">
         <h1>Posiciones Activas</h1>
-        <div style={{ color: "#94a3b8" }}>
-          {summary.total} posiciones abiertas
-        </div>
+        <div style={{ color: "#94a3b8" }}>{summary.total} posiciones abiertas</div>
       </div>
 
       {/* Métricas resumen */}
       <div style={{ marginBottom: 20 }}>
-        <div>Total resultado acumulado: 
+        <div>
+          Total resultado acumulado:
           <span style={{ marginLeft: 8, fontWeight: 700, color: colorReturn(summary.totalPL) }}>
             ${summary.totalPL.toFixed(2)}
           </span>
@@ -177,11 +152,7 @@ export default function PositionsLive() {
               <td>
                 <Link
                   to={`/analysis?ticker=${r.ticker}`}
-                  style={{
-                    color: "#38bdf8",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                  }}
+                  style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}
                 >
                   {r.ticker}
                 </Link>
@@ -192,9 +163,7 @@ export default function PositionsLive() {
               <td>${r.currentPrice.toFixed(2)}</td>
 
               <td style={{ color: colorReturn(r.currentReturn), fontWeight: 700 }}>
-                {r.currentReturn != null
-                  ? r.currentReturn.toFixed(2) + "%"
-                  : "—"}
+                {r.currentReturn != null ? r.currentReturn.toFixed(2) + "%" : "—"}
               </td>
 
               <td style={{ color: colorReturn(r.unrealizedPL), fontWeight: 700 }}>
@@ -202,18 +171,10 @@ export default function PositionsLive() {
               </td>
 
               <td style={{ color: colorReturn(r.lastPrediction), fontWeight: 700 }}>
-                {r.lastPrediction != null
-                  ? r.lastPrediction.toFixed(2) + "%"
-                  : "—"}
+                {r.lastPrediction != null ? r.lastPrediction.toFixed(2) + "%" : "—"}
               </td>
 
-              <td>
-                {r.modelCorrect === true
-                  ? statusBadge("correct")
-                  : r.modelCorrect === false
-                  ? statusBadge("incorrect")
-                  : statusBadge("pending")}
-              </td>
+              <td>{statusBadge(r.modelCorrect)}</td>
             </tr>
           ))}
         </tbody>
