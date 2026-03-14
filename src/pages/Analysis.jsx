@@ -563,4 +563,17 @@ const S = {
   selectorLabel:{ color: "#94a3b8", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em" },
   select:       { width: "100%", height: 48, borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "#162338", color: "#f8fafc", padding: "0 14px", fontSize: 16, outline: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.25)" },
   loadingBox:   { padding: 18, borderRadius: 16, background: "rgba(30,41,59,0.85)", color: "#fbbf24", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 16 },
-  emptyBox:     { padding: 2
+  emptyBox:     { padding: 22, borderRadius: 16, background: "rgba(30,41,59,0.85)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.06)" },
+  errorBox:     { padding: 18, borderRadius: 16, background: "#3b0d0d", color: "#fecaca", border: "1px solid rgba(239,68,68,0.2)" },
+  contentGrid:  { display: "grid", gap: 20 },
+  kpiGrid:      { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 },
+  chartGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 },
+  card:         { background: "linear-gradient(180deg, rgba(24,35,56,0.96) 0%, rgba(18,28,46,0.96) 100%)", borderRadius: 22, padding: 22, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 14px 36px rgba(0,0,0,0.28)" },
+  cardTitle:    { fontSize: 18, fontWeight: 800, marginBottom: 14, color: "#f8fafc" },
+  cardMeta:     { fontSize: 12, color: "#64748b" },
+  chartWrap:    { width: "100%", height: 280 },
+  kpiLabel:     { color: "#94a3b8", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", marginBottom: 10 },
+  kpiBig:       { fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 800, lineHeight: 1 },
+  kpiSub:       { marginTop: 8, color: "#e2e8f0", fontSize: 15 },
+  tooltip:      { background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "#fff", fontSize: 13 },
+};
