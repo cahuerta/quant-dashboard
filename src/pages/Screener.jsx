@@ -120,7 +120,6 @@ function Section({ title, data }) {
         <thead>
           <tr>
             <th>#</th>
-            <th>País</th>
             <th>Activo</th>
             <th title="Score cuantitativo total del modelo">Score</th>
             <th title="Retorno acumulado últimos 3 meses">Momentum 3M</th>
@@ -148,15 +147,14 @@ function Section({ title, data }) {
                   {index + 1}
                 </td>
 
-                {/* Bandera */}
-                <td style={{ fontSize: "1.2rem", textAlign: "center" }}>
-                  {getFlag(c.ticker)}
-                </td>
-
-                {/* Ticker */}
+                {/* Ticker + bandera inline */}
                 <td>
                   <strong>
-                    {c.ticker} {isElite && "🔥"}
+                    {c.ticker}
+                    <span style={{ marginLeft: 6, fontSize: "1rem" }}>
+                      {getFlag(c.ticker)}
+                    </span>
+                    {isElite && " 🔥"}
                   </strong>
                 </td>
 
@@ -186,4 +184,4 @@ function Section({ title, data }) {
       </table>
     </>
   );
-}
+            }
