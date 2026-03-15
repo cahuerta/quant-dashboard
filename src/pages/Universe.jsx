@@ -158,7 +158,6 @@ export default function Universe() {
       <table className="table">
         <thead>
           <tr>
-            <th>País</th>
             <th>Activo</th>
             <th>Alpha</th>
             <th>Confianza</th>
@@ -177,7 +176,7 @@ export default function Universe() {
                 {groupHeader && (
                   <tr key={`group-${groupHeader.market}`}>
                     <td
-                      colSpan={7}
+                      colSpan={6}
                       style={{
                         background: "#0f172a",
                         color: "#94a3b8",
@@ -196,18 +195,16 @@ export default function Universe() {
                 )}
 
                 <tr key={r.ticker}>
-                  {/* Bandera */}
-                  <td style={{ fontSize: "1.3rem", textAlign: "center" }}>
-                    {r.flag}
-                  </td>
-
-                  {/* Ticker */}
+                  {/* Ticker + bandera inline */}
                   <td>
                     <Link
                       to={`/analysis?ticker=${r.ticker}`}
                       style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}
                     >
                       {r.ticker}
+                      <span style={{ marginLeft: 6, fontSize: "1rem" }}>
+                        {r.flag}
+                      </span>
                     </Link>
                   </td>
 
@@ -247,4 +244,4 @@ export default function Universe() {
       </table>
     </div>
   );
-                  }
+}
