@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const API = "https://spy-2w-price-prediction.onrender.com";
 
@@ -99,12 +100,15 @@ export default function Signals() {
               <td>{index + 1}</td>
 
               <td>
-                <strong>
+                <Link
+                  to={`/analysis?ticker=${s.ticker}`}
+                  style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}
+                >
                   {s.ticker}
                   <span style={{ marginLeft: 6, fontSize: "1rem" }}>
                     {getFlag(s.ticker)}
                   </span>
-                </strong>
+                </Link>
               </td>
 
               <td style={{ color: colorConfianza(s.confidence), fontWeight: 700 }}>
