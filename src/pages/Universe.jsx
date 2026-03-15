@@ -9,7 +9,6 @@ const API = import.meta.env.VITE_API_URL;
 function getMarketInfo(ticker) {
   if (!ticker) return { flag: "🌐", market: "—" };
   const t = ticker.toUpperCase();
-
   if (t.endsWith(".SN") || t.endsWith(".SCL")) return { flag: "🇨🇱", market: "CL" };
   if (t.endsWith(".MC"))                        return { flag: "🇪🇸", market: "ES" };
   if (t.endsWith(".DE") || t.endsWith(".XETRA")) return { flag: "🇩🇪", market: "DE" };
@@ -39,18 +38,43 @@ function colorConf(c) {
 }
 
 function reasonLabel(reason) {
-  if (!reason) return "—";
+  if (!reason) return null;
   const map = {
-    alpha_below_threshold: "Alpha bajo threshold",
+    alpha_below_threshold:    "Alpha bajo threshold",
     liquidity_gate_triggered: "Liquidez insuficiente",
-    kill_switch: "Kill switch",
-    no_alpha: "Sin alpha",
+    kill_switch:              "Kill switch",
+    no_alpha:                 "Sin alpha",
   };
   return map[reason] || reason;
 }
 
 // =========================
-// ORDEN DE MERCADOS para agrupar
+// COLUMNA ESTADO UNIFICADA
+// =========================
+function EstadoCell({ executable, block_reason }) {
+  if (executable) {
+    return (
+      <td style={{ fontWeight: 700, color: "#22c55e", whiteSpace: "nowrap" }}>
+        ✅ Ejecutable
+      </td>
+    );
+  }
+
+  const causa = reasonLabel(block_reason);
+  return (
+    <td>
+      <span style={{ fontWeight: 700, color: "#ef4444" }}>❌</span>
+      {causa && (
+        <div style={{ color: "#64748b", fontSize: "0.75rem", marginTop: 2 }}>
+          {causa}
+        </div>
+      )}
+    </td>
+  );
+}
+
+// =========================
+// ORDEN DE MERCADOS
 // =========================
 const MARKET_ORDER = ["US", "CL", "ES", "DE", "FR", "NL", "CH", "CA", "UK"];
 
@@ -61,7 +85,7 @@ export default function Universe() {
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
-  const [groupBy, setGroupBy] = useState(false);   // toggle agrupar por país
+  const [groupBy, setGroupBy] = useState(false);
 
   useEffect(() => {
     if (!API) {
@@ -89,24 +113,21 @@ export default function Universe() {
     loadUniverse();
   }, []);
 
-  // Enriquecer filas con info de mercado
   const enriched = useMemo(() =>
     rows.map((r) => ({ ...r, ...getMarketInfo(r.ticker) })),
     [rows]
   );
 
   const subtitle = useMemo(() => {
-    const exec = enriched.filter((r) => r.executable).length;
+    const exec    = enriched.filter((r) => r.executable).length;
     const markets = [...new Set(enriched.map((r) => r.flag))];
     return `Activos: ${enriched.length} | Ejecutables: ${exec} | Mercados: ${markets.join(" ")}`;
   }, [enriched]);
 
-  // Ordenar: por alpha desc, con opción de agrupar por país
   const sorted = useMemo(() => {
     if (!groupBy) {
       return [...enriched].sort((a, b) => (b.alpha ?? -99) - (a.alpha ?? -99));
     }
-    // Agrupado: ordenar por mercado primero, luego alpha desc
     return [...enriched].sort((a, b) => {
       const mi = MARKET_ORDER.indexOf(a.market);
       const mj = MARKET_ORDER.indexOf(b.market);
@@ -115,7 +136,6 @@ export default function Universe() {
     });
   }, [enriched, groupBy]);
 
-  // Saber cuándo insertar separador de grupo
   function showGroupHeader(idx) {
     if (!groupBy) return null;
     if (idx === 0) return sorted[0];
@@ -137,7 +157,6 @@ export default function Universe() {
           </div>
         </div>
 
-        {/* Toggle agrupar por país */}
         <button
           onClick={() => setGroupBy((v) => !v)}
           style={{
@@ -162,8 +181,7 @@ export default function Universe() {
             <th>Alpha</th>
             <th>Confianza</th>
             <th>Posición</th>
-            <th>Ejecutable</th>
-            <th>Motivo</th>
+            <th>Estado</th>
           </tr>
         </thead>
 
@@ -172,11 +190,10 @@ export default function Universe() {
             const groupHeader = showGroupHeader(idx);
             return (
               <>
-                {/* Separador de grupo */}
                 {groupHeader && (
                   <tr key={`group-${groupHeader.market}`}>
                     <td
-                      colSpan={6}
+                      colSpan={5}
                       style={{
                         background: "#0f172a",
                         color: "#94a3b8",
@@ -195,7 +212,6 @@ export default function Universe() {
                 )}
 
                 <tr key={r.ticker}>
-                  {/* Ticker + bandera inline */}
                   <td>
                     <Link
                       to={`/analysis?ticker=${r.ticker}`}
@@ -208,7 +224,6 @@ export default function Universe() {
                     </Link>
                   </td>
 
-                  {/* Alpha */}
                   <td style={{ fontWeight: 800 }}>
                     {r.alpha != null ? (
                       <span style={{ color: colorAlpha(r.alpha) }}>
@@ -217,25 +232,15 @@ export default function Universe() {
                     ) : "—"}
                   </td>
 
-                  {/* Confianza */}
                   <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
                     {r.confidence != null ? r.confidence.toFixed(2) : "—"}
                   </td>
 
-                  {/* Posición */}
                   <td>
                     {r.positionValue > 0 ? "$" + r.positionValue.toFixed(0) : "—"}
                   </td>
 
-                  {/* Ejecutable */}
-                  <td style={{ fontWeight: 800, textAlign: "center" }}>
-                    {r.executable ? "✅" : "❌"}
-                  </td>
-
-                  {/* Motivo */}
-                  <td style={{ color: "#94a3b8" }}>
-                    {reasonLabel(r.block_reason)}
-                  </td>
+                  <EstadoCell executable={r.executable} block_reason={r.block_reason} />
                 </tr>
               </>
             );
@@ -244,4 +249,4 @@ export default function Universe() {
       </table>
     </div>
   );
-}
+    }
