@@ -3,6 +3,23 @@ import { useEffect, useState } from "react";
 const API = "https://spy-2w-price-prediction.onrender.com";
 
 // =========================
+// 🌍 BANDERA por sufijo
+// =========================
+function getFlag(ticker) {
+  if (!ticker) return "🌐";
+  const t = ticker.toUpperCase();
+  if (t.endsWith(".SN") || t.endsWith(".SCL")) return "🇨🇱";
+  if (t.endsWith(".MC"))                        return "🇪🇸";
+  if (t.endsWith(".DE") || t.endsWith(".XETRA")) return "🇩🇪";
+  if (t.endsWith(".PA"))                        return "🇫🇷";
+  if (t.endsWith(".AS"))                        return "🇳🇱";
+  if (t.endsWith(".SW"))                        return "🇨🇭";
+  if (t.endsWith(".TO"))                        return "🇨🇦";
+  if (t.endsWith(".L"))                         return "🇬🇧";
+  return "🇺🇸";
+}
+
+// =========================
 // 🎨 COLORES
 // =========================
 function colorConfianza(v) {
@@ -15,20 +32,17 @@ function colorConfianza(v) {
 function interpretarCalidad(q) {
   if (!q) return "—";
   if (q.includes("STRONG")) return "🔥 Alta";
-  if (q.includes("GOOD")) return "✅ Buena";
-  if (q.includes("WEAK")) return "⚠️ Débil";
+  if (q.includes("GOOD"))   return "✅ Buena";
+  if (q.includes("WEAK"))   return "⚠️ Débil";
   return "❌ Ruido";
 }
 
 function interpretarRecomendacion(rec) {
   if (!rec) return "—";
-
   const r = rec.toUpperCase();
-
-  if (r.includes("BUY")) return "🟢 Comprar";
+  if (r.includes("BUY"))  return "🟢 Comprar";
   if (r.includes("SELL")) return "🔴 Vender";
   if (r.includes("HOLD")) return "🟡 Mantener";
-
   return rec;
 }
 
@@ -37,30 +51,22 @@ function interpretarRecomendacion(rec) {
 // =========================
 export default function Signals() {
   const [signals, setSignals] = useState([]);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API}/signals`, {
-          cache: "no-store"
-        });
-
+        const res = await fetch(`${API}/signals`, { cache: "no-store" });
         if (!res.ok) throw new Error("Error cargando señales");
-
         const json = await res.json();
-
         const sorted = (json.signals || [])
-          .filter(s => !s.error)
+          .filter((s) => !s.error)
           .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
-
         setSignals(sorted);
-
       } catch (err) {
         setError(err.message);
       }
     }
-
     load();
   }, []);
 
@@ -81,15 +87,9 @@ export default function Signals() {
           <tr>
             <th>#</th>
             <th>Activo</th>
-            <th title="Nivel de confianza estadística del modelo">
-              Confianza
-            </th>
-            <th title="Calidad histórica de la señal">
-              Calidad
-            </th>
-            <th title="Acción sugerida por el modelo">
-              Acción Sugerida
-            </th>
+            <th title="Nivel de confianza estadística del modelo">Confianza</th>
+            <th title="Calidad histórica de la señal">Calidad</th>
+            <th title="Acción sugerida por el modelo">Acción Sugerida</th>
           </tr>
         </thead>
 
@@ -99,15 +99,15 @@ export default function Signals() {
               <td>{index + 1}</td>
 
               <td>
-                <strong>{s.ticker}</strong>
+                <strong>
+                  {s.ticker}
+                  <span style={{ marginLeft: 6, fontSize: "1rem" }}>
+                    {getFlag(s.ticker)}
+                  </span>
+                </strong>
               </td>
 
-              <td
-                style={{
-                  color: colorConfianza(s.confidence),
-                  fontWeight: 700
-                }}
-              >
+              <td style={{ color: colorConfianza(s.confidence), fontWeight: 700 }}>
                 {s.confidence?.toFixed(3)}
               </td>
 
