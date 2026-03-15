@@ -4,6 +4,24 @@ import { Link } from "react-router-dom";
 const API = import.meta.env.VITE_API_URL;
 
 // =========================
+// 🌍 BANDERA + MERCADO por sufijo
+// =========================
+function getMarketInfo(ticker) {
+  if (!ticker) return { flag: "🌐", market: "—" };
+  const t = ticker.toUpperCase();
+
+  if (t.endsWith(".SN") || t.endsWith(".SCL")) return { flag: "🇨🇱", market: "CL" };
+  if (t.endsWith(".MC"))                        return { flag: "🇪🇸", market: "ES" };
+  if (t.endsWith(".DE") || t.endsWith(".XETRA")) return { flag: "🇩🇪", market: "DE" };
+  if (t.endsWith(".PA"))                        return { flag: "🇫🇷", market: "FR" };
+  if (t.endsWith(".AS"))                        return { flag: "🇳🇱", market: "NL" };
+  if (t.endsWith(".SW"))                        return { flag: "🇨🇭", market: "CH" };
+  if (t.endsWith(".TO"))                        return { flag: "🇨🇦", market: "CA" };
+  if (t.endsWith(".L"))                         return { flag: "🇬🇧", market: "UK" };
+  return                                               { flag: "🇺🇸", market: "US" };
+}
+
+// =========================
 // 🎨 COLORES
 // =========================
 function colorAlpha(a) {
@@ -19,31 +37,33 @@ function colorConf(c) {
   if (c >= 0.50) return "#eab308";
   return "#ef4444";
 }
+
 function reasonLabel(reason) {
-
   if (!reason) return "—";
-
   const map = {
     alpha_below_threshold: "Alpha bajo threshold",
     liquidity_gate_triggered: "Liquidez insuficiente",
     kill_switch: "Kill switch",
-    no_alpha: "Sin alpha"
+    no_alpha: "Sin alpha",
   };
-
   return map[reason] || reason;
 }
+
+// =========================
+// ORDEN DE MERCADOS para agrupar
+// =========================
+const MARKET_ORDER = ["US", "CL", "ES", "DE", "FR", "NL", "CH", "CA", "UK"];
 
 // =========================
 // COMPONENT
 // =========================
 export default function Universe() {
-
-  const [rows, setRows] = useState([]);
+  const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
+  const [groupBy, setGroupBy] = useState(false);   // toggle agrupar por país
 
   useEffect(() => {
-
     if (!API) {
       setError("Falta VITE_API_URL");
       setLoading(false);
@@ -51,49 +71,60 @@ export default function Universe() {
     }
 
     async function loadUniverse() {
-
       try {
-
         setLoading(true);
         setError(null);
-
-        const res = await fetch(`${API}/dashboard/universe`, {
-          cache: "no-store",
-        });
-
+        const res = await fetch(`${API}/dashboard/universe`, { cache: "no-store" });
         if (!res.ok) throw new Error("Universe error");
-
         const json = await res.json();
-
         setRows(json?.rows || []);
-
       } catch (err) {
-
         console.error(err);
         setError("Error cargando Universe");
-
       } finally {
-
         setLoading(false);
-
       }
-
     }
 
     loadUniverse();
-
   }, []);
 
+  // Enriquecer filas con info de mercado
+  const enriched = useMemo(() =>
+    rows.map((r) => ({ ...r, ...getMarketInfo(r.ticker) })),
+    [rows]
+  );
+
   const subtitle = useMemo(() => {
+    const exec = enriched.filter((r) => r.executable).length;
+    const markets = [...new Set(enriched.map((r) => r.flag))];
+    return `Activos: ${enriched.length} | Ejecutables: ${exec} | Mercados: ${markets.join(" ")}`;
+  }, [enriched]);
 
-    const exec = rows.filter((r) => r.executable).length;
+  // Ordenar: por alpha desc, con opción de agrupar por país
+  const sorted = useMemo(() => {
+    if (!groupBy) {
+      return [...enriched].sort((a, b) => (b.alpha ?? -99) - (a.alpha ?? -99));
+    }
+    // Agrupado: ordenar por mercado primero, luego alpha desc
+    return [...enriched].sort((a, b) => {
+      const mi = MARKET_ORDER.indexOf(a.market);
+      const mj = MARKET_ORDER.indexOf(b.market);
+      if (mi !== mj) return mi - mj;
+      return (b.alpha ?? -99) - (a.alpha ?? -99);
+    });
+  }, [enriched, groupBy]);
 
-    return `Activos: ${rows.length} | Ejecutables: ${exec}`;
-
-  }, [rows]);
+  // Saber cuándo insertar separador de grupo
+  function showGroupHeader(idx) {
+    if (!groupBy) return null;
+    if (idx === 0) return sorted[0];
+    if (sorted[idx].market !== sorted[idx - 1].market) return sorted[idx];
+    return null;
+  }
 
   if (loading) return <div className="global-loading">Cargando...</div>;
-  if (error) return <div className="global-loading">{error}</div>;
+  if (error)   return <div className="global-loading">{error}</div>;
 
   return (
     <div className="global-container">
@@ -101,16 +132,33 @@ export default function Universe() {
       <div className="global-header">
         <div>
           <h1>Universe Institucional</h1>
-          <div style={{ color: "#94a3b8" }}>
+          <div style={{ color: "#94a3b8", fontSize: "0.85rem", marginTop: 4 }}>
             {subtitle}
           </div>
         </div>
+
+        {/* Toggle agrupar por país */}
+        <button
+          onClick={() => setGroupBy((v) => !v)}
+          style={{
+            background: groupBy ? "#1d4ed8" : "#1e293b",
+            color: "#e2e8f0",
+            border: "1px solid #334155",
+            borderRadius: 8,
+            padding: "6px 14px",
+            cursor: "pointer",
+            fontSize: "0.82rem",
+            fontWeight: 600,
+          }}
+        >
+          {groupBy ? "🌍 Por país" : "📊 Por alpha"}
+        </button>
       </div>
 
       <table className="table">
-
         <thead>
           <tr>
+            <th>País</th>
             <th>Activo</th>
             <th>Alpha</th>
             <th>Confianza</th>
@@ -121,59 +169,82 @@ export default function Universe() {
         </thead>
 
         <tbody>
-
-          {rows.map((r) => (
-            <tr key={r.ticker}>
-
-              <td>
-                <Link
-                  to={`/analysis?ticker=${r.ticker}`}
-                  style={{
-                    color: "#38bdf8",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                  }}
-                >
-                  {r.ticker}
-                </Link>
-              </td>
-
-              <td style={{ fontWeight: 800 }}>
-                {r.alpha != null ? (
-                  <span style={{ color: colorAlpha(r.alpha) }}>
-                    {r.alpha.toFixed(3)}
-                  </span>
-                ) : (
-                  "—"
+          {sorted.map((r, idx) => {
+            const groupHeader = showGroupHeader(idx);
+            return (
+              <>
+                {/* Separador de grupo */}
+                {groupHeader && (
+                  <tr key={`group-${groupHeader.market}`}>
+                    <td
+                      colSpan={7}
+                      style={{
+                        background: "#0f172a",
+                        color: "#94a3b8",
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        padding: "6px 12px",
+                        letterSpacing: "0.08em",
+                        borderBottom: "1px solid #1e293b",
+                      }}
+                    >
+                      {groupHeader.flag} {groupHeader.market}
+                      {" · "}
+                      {sorted.filter((x) => x.market === groupHeader.market).length} activos
+                    </td>
+                  </tr>
                 )}
-              </td>
 
-              <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
-                {r.confidence != null
-                  ? r.confidence.toFixed(2)
-                  : "—"}
-              </td>
+                <tr key={r.ticker}>
+                  {/* Bandera */}
+                  <td style={{ fontSize: "1.3rem", textAlign: "center" }}>
+                    {r.flag}
+                  </td>
 
-              <td>
-                {r.positionValue > 0
-                  ? "$" + r.positionValue.toFixed(0)
-                  : "—"}
-              </td>
+                  {/* Ticker */}
+                  <td>
+                    <Link
+                      to={`/analysis?ticker=${r.ticker}`}
+                      style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}
+                    >
+                      {r.ticker}
+                    </Link>
+                  </td>
 
-              <td style={{ fontWeight: 800 }}>
-                {r.executable ? "✅" : "❌"}
-              </td>
-              <td style={{ color: "#94a3b8" }}>
-                {reasonLabel(r.block_reason)}
-              </td>
+                  {/* Alpha */}
+                  <td style={{ fontWeight: 800 }}>
+                    {r.alpha != null ? (
+                      <span style={{ color: colorAlpha(r.alpha) }}>
+                        {r.alpha.toFixed(3)}
+                      </span>
+                    ) : "—"}
+                  </td>
 
-            </tr>
-          ))}
+                  {/* Confianza */}
+                  <td style={{ color: colorConf(r.confidence), fontWeight: 700 }}>
+                    {r.confidence != null ? r.confidence.toFixed(2) : "—"}
+                  </td>
 
+                  {/* Posición */}
+                  <td>
+                    {r.positionValue > 0 ? "$" + r.positionValue.toFixed(0) : "—"}
+                  </td>
+
+                  {/* Ejecutable */}
+                  <td style={{ fontWeight: 800, textAlign: "center" }}>
+                    {r.executable ? "✅" : "❌"}
+                  </td>
+
+                  {/* Motivo */}
+                  <td style={{ color: "#94a3b8" }}>
+                    {reasonLabel(r.block_reason)}
+                  </td>
+                </tr>
+              </>
+            );
+          })}
         </tbody>
-
       </table>
-
     </div>
   );
-}
+                  }
