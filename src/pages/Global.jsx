@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useTransition } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -63,10 +63,10 @@ function EquityTooltip({ active, payload, label }) {
 // ════════════════════════════════════════════════════════
 export default function Global() {
 
-  const [market, setMarket]       = useState(null);
-  const [perf, setPerf]           = useState(null);
-  const [equity, setEquity]       = useState([]);
-  const [equityMeta, setEquityMeta] = useState(null);
+  const [market, setMarket]           = useState(null);
+  const [perf, setPerf]               = useState(null);
+  const [equity, setEquity]           = useState([]);
+  const [equityMeta, setEquityMeta]   = useState(null);
 
   const [marketError, setMarketError] = useState(null);
   const [perfError, setPerfError]     = useState(null);
@@ -74,8 +74,8 @@ export default function Global() {
 
   const [loading, setLoading]         = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [isPending, startTransition]  = useTransition();
 
+  // ── loadData como useCallback para poder referenciarlo en el botón y el interval
   const loadData = useCallback(async () => {
     setLoading(true);
     setMarketError(null);
@@ -103,13 +103,13 @@ export default function Global() {
         setPerfError("No disponible");
       }
 
-      // Equity curve — [EC1] nuevo formato {curve, n_days, n_trades, updated_at}
+      // Equity curve
       if (equityRes.status === "fulfilled" && equityRes.value.ok) {
         const data = await equityRes.value.json();
         setEquity(data?.curve || []);
         setEquityMeta({
-          n_days:   data?.n_days,
-          n_trades: data?.n_trades,
+          n_days:    data?.n_days,
+          n_trades:  data?.n_trades,
           updatedAt: data?.updated_at,
         });
       } else {
@@ -125,18 +125,21 @@ export default function Global() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // ── Auto-refresh cada 60 segundos
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 60_000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
-  const handleRefresh = () => startTransition(() => loadData());
+  if (loading && !perf && !market)
+    return <LoadingSkeleton />;
 
-  if (loading) return <LoadingSkeleton />;
+  const equityNow   = perf?.equity            ?? null;
+  const totalReturn = perf?.total_return_pct  ?? null;
+  const drawdown    = perf?.drawdown_pct      ?? null;
+  const winRate     = Number(perf?.win_rate_pct ?? 0);
 
-  const equityNow  = perf?.equity         ?? null;
-  const totalReturn = perf?.total_return_pct ?? null;
-  const drawdown   = perf?.drawdown_pct   ?? null;
-  const winRate    = Number(perf?.win_rate_pct ?? 0);
-
-  // Color según retorno
   const returnColor = totalReturn == null
     ? "#ffffff"
     : totalReturn >= 0 ? "#22c55e" : "#ef4444";
@@ -158,7 +161,7 @@ export default function Global() {
             </span>
           )}
           <div className="status-indicator">
-            ● {isPending ? "Sincronizando..." : "En línea"}
+            ● {loading ? "Sincronizando..." : "En línea"}
           </div>
         </div>
       </header>
@@ -202,7 +205,7 @@ export default function Global() {
                   dataKey="date"
                   stroke="#94a3b8"
                   tick={{ fontSize: 11 }}
-                  tickFormatter={(d) => d?.slice(5)} // MM-DD
+                  tickFormatter={(d) => d?.slice(5)}
                 />
                 <YAxis
                   stroke="#94a3b8"
@@ -304,11 +307,11 @@ export default function Global() {
       {/* ── ACCIONES ── */}
       <div className="dashboard-actions">
         <button
-          onClick={handleRefresh}
+          onClick={loadData}
           className="refresh-btn"
-          disabled={isPending}
+          disabled={loading}
         >
-          {isPending ? "Sincronizando..." : "Actualizar"}
+          {loading ? "Sincronizando..." : "Actualizar"}
         </button>
       </div>
 
