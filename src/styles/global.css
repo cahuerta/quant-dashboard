@@ -811,3 +811,289 @@ a {
 .eq-ret.pos { color: #22c55e; }
 .eq-ret.neg { color: #ef4444; }
 .eq-trades { color: #64748b; margin: 0; font-size: 0.72rem; }
+/* =====================================================
+   GLOBAL.JSX V5 — APPEND AL FINAL DE global.css
+   ===================================================== */
+
+/* ── Topbar ────────────────────────────────────────── */
+.g-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.g-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.g-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.g-updated {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Section Header ─────────────────────────────────── */
+.g-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 16px 0;
+}
+
+.g-section-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.g-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.g-section-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── KPI Row (2 cards principales) ─────────────────── */
+.g-kpi-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.g-kpi-main {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--accent);
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.g-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.g-kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-kpi-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── KPI Grid (4 cards secundarias) ─────────────────── */
+.g-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.g-kpi-sm {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.g-kpi-sm-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Chart meta ─────────────────────────────────────── */
+.g-chart-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.g-source-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Coverage row ───────────────────────────────────── */
+.g-coverage-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  padding: 16px;
+  margin-bottom: 20px;
+  gap: 0;
+}
+
+.g-cov-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.g-cov-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-cov-lbl {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.g-cov-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border-soft);
+}
+
+/* ── Bars block ─────────────────────────────────────── */
+.g-bars-block {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.g-bars-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.g-best-badge {
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
+
+/* ── HitBar ─────────────────────────────────────────── */
+.hb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.hb-row:last-child {
+  margin-bottom: 0;
+}
+
+.hb-meta {
+  display: flex;
+  flex-direction: column;
+  width: 68px;
+  flex-shrink: 0;
+}
+
+.hb-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.hb-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.hb-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 20px;
+  overflow: visible;
+  position: relative;
+}
+
+.hb-fill {
+  height: 100%;
+  border-radius: 20px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  min-width: 2px;
+}
+
+/* línea de referencia en 50% */
+.hb-ref50 {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 1px;
+  height: 16px;
+  background: rgba(255,255,255,0.15);
+  pointer-events: none;
+}
+
+.hb-value {
+  font-size: 13px;
+  font-weight: 700;
+  width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+   }
+   
