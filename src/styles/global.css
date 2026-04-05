@@ -1258,3 +1258,52 @@ a {
   margin-bottom: 16px;
   padding: 0 2px;
 }
+/* =====================================================
+   TENDENCIA RECIENTE — append a global.css
+   ===================================================== */
+
+/* Badge de tendencia en section header */
+.g-trend-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.g-trend-mejorando {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.g-trend-empeorando {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.g-trend-estable {
+  background: rgba(148, 163, 184, 0.10);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+}
+
+/* Línea de referencia histórica al final de las barras */
+.g-hist-ref {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-strong);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.g-hist-ref span:last-child {
+  font-weight: 700;
+  font-size: 12px;
+}
