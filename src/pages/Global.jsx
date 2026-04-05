@@ -49,17 +49,34 @@ function EquityTooltip({ active, payload }) {
   );
 }
 
-// ─── Barra de hit rate con color ────────────────────────
-function HitBar({ value, label }) {
+// ─── HitBar horizontal ──────────────────────────────────
+function HitBar({ label, value, sublabel }) {
   if (value == null) return null;
-  const color = value >= 55 ? "#22c55e" : value >= 45 ? "#f97316" : "#ef4444";
+  const color  = value >= 55 ? "#22c55e" : value >= 45 ? "#f97316" : "#ef4444";
+  const pct    = Math.min(value, 100);
   return (
-    <div className="hit-bar-wrap">
-      <div className="hit-bar-label">{label}</div>
-      <div className="hit-bar-track">
-        <div className="hit-bar-fill" style={{ width: `${value}%`, background: color }} />
-        <span className="hit-bar-value" style={{ color }}>{value.toFixed(1)}%</span>
+    <div className="hb-row">
+      <div className="hb-meta">
+        <span className="hb-label">{label}</span>
+        {sublabel && <span className="hb-sub">{sublabel}</span>}
       </div>
+      <div className="hb-track">
+        <div className="hb-fill" style={{ width: `${pct}%`, background: color }} />
+        {/* línea de referencia en 50% */}
+        <div className="hb-ref50" />
+      </div>
+      <span className="hb-value" style={{ color }}>{value.toFixed(1)}%</span>
+    </div>
+  );
+}
+
+// ─── Tarjeta KPI modelo ─────────────────────────────────
+function ModelKpi({ label, value, valueColor = "#f8fafc", sub }) {
+  return (
+    <div className="mkpi-card">
+      <span className="mkpi-label">{label}</span>
+      <span className="mkpi-value" style={{ color: valueColor }}>{value}</span>
+      {sub && <span className="mkpi-sub">{sub}</span>}
     </div>
   );
 }
@@ -67,14 +84,14 @@ function HitBar({ value, label }) {
 // ════════════════════════════════════════════════════════
 export default function Global() {
 
-  const [perf,    setPerf]    = useState(null);
-  const [equity,  setEquity]  = useState([]);
+  const [perf,       setPerf]       = useState(null);
+  const [equity,     setEquity]     = useState([]);
   const [equityMeta, setEquityMeta] = useState(null);
-  const [model,   setModel]   = useState(null);
+  const [model,      setModel]      = useState(null);
 
-  const [loading,  setLoading]  = useState(true);
+  const [loading,     setLoading]     = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [errors,   setErrors]   = useState({});
+  const [errors,      setErrors]      = useState({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -90,27 +107,17 @@ export default function Global() {
 
     if (perfRes.status === "fulfilled" && perfRes.value.ok) {
       setPerf(await perfRes.value.json());
-    } else {
-      errs.perf = "No disponible";
-    }
+    } else { errs.perf = "No disponible"; }
 
     if (equityRes.status === "fulfilled" && equityRes.value.ok) {
       const data = await equityRes.value.json();
       setEquity(data?.curve || []);
-      setEquityMeta({
-        n_days:    data?.n_days,
-        source:    data?.source,
-        updatedAt: data?.updated_at,
-      });
-    } else {
-      errs.equity = "Curva no disponible";
-    }
+      setEquityMeta({ n_days: data?.n_days, source: data?.source });
+    } else { errs.equity = "Curva no disponible"; }
 
     if (modelRes.status === "fulfilled" && modelRes.value.ok) {
       setModel(await modelRes.value.json());
-    } else {
-      errs.model = "No disponible";
-    }
+    } else { errs.model = "No disponible"; }
 
     setErrors(errs);
     setLastUpdated(new Date().toISOString());
@@ -124,33 +131,52 @@ export default function Global() {
   }, [loadData]);
 
   if (loading && !perf && !model)
-    return <div className="global-container"><div className="global-loader">Sincronizando sistema...</div></div>;
+    return (
+      <div className="global-container">
+        <div className="global-loader">Sincronizando sistema...</div>
+      </div>
+    );
 
+  // ── Colores dinámicos ────────────────────────────────
   const totalReturn = perf?.total_return_pct ?? null;
-  const returnColor = totalReturn == null ? "#fff" : totalReturn >= 0 ? "#22c55e" : "#ef4444";
+  const returnColor = totalReturn == null ? "#fff"
+    : totalReturn >= 0 ? "#22c55e" : "#ef4444";
   const ddColor = (perf?.drawdown_pct ?? 0) < -5 ? "#ef4444" : "#f97316";
 
-  // ── Horizonte mejor y peor ───────────────────────────
+  const hitDir   = model?.hit_rate_direction_pct ?? null;
+  const hitColor = hitDir == null ? "#fff"
+    : hitDir >= 55 ? "#22c55e" : hitDir >= 45 ? "#f97316" : "#ef4444";
+
+  // ── Horizonte H1→H10 ordenado ────────────────────────
   const byHorizon = model?.by_horizon ?? {};
-  const horizonEntries = Object.entries(byHorizon)
+  const horizonRows = Object.entries(byHorizon)
     .filter(([, v]) => v.hit_rate_pct != null)
     .sort(([a], [b]) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
 
-  const bestHorizon = horizonEntries.length
-    ? horizonEntries.reduce((a, b) => a[1].hit_rate_pct >= b[1].hit_rate_pct ? a : b)
+  const bestH = horizonRows.length
+    ? horizonRows.reduce((a, b) => a[1].hit_rate_pct >= b[1].hit_rate_pct ? a : b)
     : null;
+
+  // ── Por recomendación ────────────────────────────────
+  const byRec = model?.by_recommendation ?? {};
+  const recOrder = ["COMPRA", "VENDE", "MANTÉN"];
+  const recRows = recOrder
+    .filter(r => byRec[r])
+    .map(r => ({ rec: r, ...byRec[r] }));
 
   return (
     <div className="global-container">
 
       {/* ── HEADER ── */}
-      <header className="global-header">
-        <h1>Quant Enterprise</h1>
-        <div className="header-right">
-          {lastUpdated && <span className="last-updated">Actualizado {fmtTime(lastUpdated)}</span>}
-          <div className="status-indicator">● {loading ? "Sincronizando..." : "En línea"}</div>
+      <div className="g-topbar">
+        <div className="g-status">
+          <span className="g-dot" />
+          {loading ? "Sincronizando..." : "En línea"}
         </div>
-      </header>
+        {lastUpdated && (
+          <span className="g-updated">Actualizado {fmtTime(lastUpdated)}</span>
+        )}
+      </div>
 
       {Object.keys(errors).length > 0 && (
         <div className="error-banner">
@@ -161,63 +187,94 @@ export default function Global() {
       )}
 
       {/* ════════════════════════════════════════════════
-          BLOQUE 1: PERFORMANCE REAL (BROKER)
+          BLOQUE 1 — PERFORMANCE REAL
       ════════════════════════════════════════════════ */}
-      <SectionTitle title="📈 Performance Real (Broker)" />
-
-      <div className="dashboard-grid">
-        <StatCard label="CAPITAL TOTAL"  value={fmt$(perf?.equity)} big />
-        <StatCard label="RETORNO TOTAL"  value={fmtPct(totalReturn)} color={returnColor} big />
-        <StatCard label="DRAWDOWN ACTUAL" value={fmtPct(perf?.drawdown_pct)} color={ddColor} />
-        <StatCard label="HIGH WATER MARK" value={fmt$(perf?.high_water_mark)} />
-        <StatCard label="CAPITAL INICIAL" value={fmt$(perf?.initial_equity)} />
-        <StatCard label="ACTIVO DESDE"    value={fmtDate(perf?.since)} />
+      <div className="g-section-header">
+        <span className="g-section-icon">📈</span>
+        <span className="g-section-title">Performance Real</span>
+        <span className="g-section-sub">Broker · Alpaca Paper</span>
       </div>
 
-      {/* Equity Curve real */}
+      {/* KPIs broker — fila principal */}
+      <div className="g-kpi-row">
+        <div className="g-kpi-main">
+          <span className="g-kpi-label">Capital Total</span>
+          <span className="g-kpi-val">{fmt$(perf?.equity)}</span>
+        </div>
+        <div className="g-kpi-main" style={{ borderColor: returnColor }}>
+          <span className="g-kpi-label">Retorno Total</span>
+          <span className="g-kpi-val" style={{ color: returnColor }}>
+            {fmtPct(totalReturn)}
+          </span>
+        </div>
+      </div>
+
+      {/* KPIs broker — fila secundaria */}
+      <div className="g-kpi-grid">
+        <div className="g-kpi-sm">
+          <span className="g-kpi-label">Drawdown Actual</span>
+          <span className="g-kpi-sm-val" style={{ color: ddColor }}>
+            {fmtPct(perf?.drawdown_pct)}
+          </span>
+        </div>
+        <div className="g-kpi-sm">
+          <span className="g-kpi-label">High Water Mark</span>
+          <span className="g-kpi-sm-val">{fmt$(perf?.high_water_mark)}</span>
+        </div>
+        <div className="g-kpi-sm">
+          <span className="g-kpi-label">Capital Inicial</span>
+          <span className="g-kpi-sm-val">{fmt$(perf?.initial_equity)}</span>
+        </div>
+        <div className="g-kpi-sm">
+          <span className="g-kpi-label">Activo Desde</span>
+          <span className="g-kpi-sm-val">{fmtDate(perf?.since)}</span>
+        </div>
+      </div>
+
+      {/* Equity Curve */}
       {equity.length > 0 ? (
-        <>
-          <div className="curve-header">
-            <span className="curve-meta">
-              {equityMeta?.n_days} días
-              {equityMeta?.source === "snapshots" && " · desde snapshots locales"}
-              {equityMeta?.source === "alpaca"    && " · desde Alpaca"}
+        <div className="chart-container">
+          <div className="g-chart-meta">
+            {equityMeta?.n_days} días
+            <span className="g-source-badge">
+              {equityMeta?.source === "alpaca" ? "Alpaca" : "local"}
             </span>
           </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={equity}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#94a3b8"
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(d) => d?.slice(5)}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                  width={52}
-                />
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={equity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis
+                dataKey="date"
+                stroke="#475569"
+                tick={{ fontSize: 10 }}
+                tickFormatter={(d) => d?.slice(5)}
+              />
+              <YAxis
+                stroke="#475569"
+                tick={{ fontSize: 10 }}
+                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                width={46}
+              />
+              {perf?.initial_equity && (
                 <ReferenceLine
-                  y={perf?.initial_equity}
-                  stroke="#475569"
-                  strokeDasharray="4 4"
+                  y={perf.initial_equity}
+                  stroke="#334155"
+                  strokeDasharray="4 3"
+                  label={{ value: "Base", fill: "#475569", fontSize: 10, position: "insideTopLeft" }}
                 />
-                <Tooltip content={<EquityTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="equity"
-                  stroke="#38bdf8"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </>
+              )}
+              <Tooltip content={<EquityTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="equity"
+                stroke="#38bdf8"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: "#38bdf8" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       ) : (
         <p className="curve-empty">
           {errors.equity ? `⚠ ${errors.equity}` : "Sin historial de equity aún."}
@@ -225,81 +282,88 @@ export default function Global() {
       )}
 
       {/* ════════════════════════════════════════════════
-          BLOQUE 2: CALIDAD PREDICTIVA (MODELO)
+          BLOQUE 2 — CALIDAD PREDICTIVA
       ════════════════════════════════════════════════ */}
-      <SectionTitle title="🎯 Calidad Predictiva (Modelo)" />
+      <div className="g-section-header" style={{ marginTop: 32 }}>
+        <span className="g-section-icon">🎯</span>
+        <span className="g-section-title">Calidad Predictiva</span>
+        <span className="g-section-sub">Modelo · sin PnL</span>
+      </div>
 
-      <div className="model-summary-row">
-        <div className="model-kpi-card">
-          <span className="stat-label">HIT RATE DIRECCIONAL</span>
-          <div
-            className="stat-value-lg"
-            style={{
-              color: (model?.hit_rate_direction_pct ?? 0) >= 50 ? "#22c55e" : "#ef4444"
-            }}
-          >
-            {fmtPct(model?.hit_rate_direction_pct, 1)}
-          </div>
-          <span className="stat-sublabel">% predicciones con dirección correcta</span>
+      {/* KPIs modelo — fila */}
+      <div className="g-kpi-row">
+        <div className="g-kpi-main" style={{ borderColor: hitColor }}>
+          <span className="g-kpi-label">Hit Rate Direccional</span>
+          <span className="g-kpi-val" style={{ color: hitColor }}>
+            {fmtPct(hitDir, 1)}
+          </span>
+          <span className="g-kpi-hint">% con dirección correcta</span>
         </div>
-
-        <div className="model-kpi-card">
-          <span className="stat-label">ERROR PROMEDIO</span>
-          <div className="stat-value-lg" style={{ color: "#f97316" }}>
+        <div className="g-kpi-main">
+          <span className="g-kpi-label">Error Promedio</span>
+          <span className="g-kpi-val" style={{ color: "#f97316" }}>
             {fmtPct(model?.avg_error_pct, 1)}
-          </div>
-          <span className="stat-sublabel">desviación retorno predicho vs real</span>
-        </div>
-
-        <div className="model-kpi-card">
-          <span className="stat-label">COBERTURA</span>
-          <div className="stat-value-lg" style={{ color: "#94a3b8" }}>
-            {model?.evaluated ?? "—"}<span style={{ fontSize: "0.6em", color: "#64748b" }}>/{model?.total ?? "—"}</span>
-          </div>
-          <span className="stat-sublabel">{model?.pending ?? 0} pendientes</span>
+          </span>
+          <span className="g-kpi-hint">desviación predicho vs real</span>
         </div>
       </div>
 
-      {/* Hit rate por recomendación */}
-      {model?.by_recommendation && Object.keys(model.by_recommendation).length > 0 && (
-        <>
-          <p className="subsection-label">Por recomendación</p>
-          <div className="hit-bars-container">
-            {Object.entries(model.by_recommendation).map(([rec, s]) => (
-              <HitBar
-                key={rec}
-                label={`${rec} (${s.total})`}
-                value={s.hit_rate_pct}
-              />
-            ))}
-          </div>
-        </>
+      {/* Cobertura */}
+      <div className="g-coverage-row">
+        <div className="g-cov-item">
+          <span className="g-cov-num">{model?.evaluated ?? "—"}</span>
+          <span className="g-cov-lbl">evaluadas</span>
+        </div>
+        <div className="g-cov-divider" />
+        <div className="g-cov-item">
+          <span className="g-cov-num" style={{ color: "#64748b" }}>{model?.pending ?? "—"}</span>
+          <span className="g-cov-lbl">pendientes</span>
+        </div>
+        <div className="g-cov-divider" />
+        <div className="g-cov-item">
+          <span className="g-cov-num" style={{ color: "#475569" }}>{model?.total ?? "—"}</span>
+          <span className="g-cov-lbl">total</span>
+        </div>
+      </div>
+
+      {/* Por recomendación */}
+      {recRows.length > 0 && (
+        <div className="g-bars-block">
+          <p className="g-bars-title">Por recomendación</p>
+          {recRows.map(({ rec, hit_rate_pct, total }) => (
+            <HitBar
+              key={rec}
+              label={rec}
+              value={hit_rate_pct}
+              sublabel={`${total} pred.`}
+            />
+          ))}
+        </div>
       )}
 
-      {/* Hit rate por horizonte H1→H10 */}
-      {horizonEntries.length > 0 && (
-        <>
-          <p className="subsection-label">
+      {/* Por horizonte */}
+      {horizonRows.length > 0 && (
+        <div className="g-bars-block">
+          <p className="g-bars-title">
             Por horizonte
-            {bestHorizon && (
-              <span className="best-horizon-badge">
-                Mejor: {bestHorizon[0]} ({bestHorizon[1].hit_rate_pct?.toFixed(1)}%)
+            {bestH && (
+              <span className="g-best-badge">
+                Mejor: {bestH[0]} · {bestH[1].hit_rate_pct?.toFixed(1)}%
               </span>
             )}
           </p>
-          <div className="hit-bars-container">
-            {horizonEntries.map(([h, s]) => (
-              <HitBar
-                key={h}
-                label={`${h} (${s.total})`}
-                value={s.hit_rate_pct}
-              />
-            ))}
-          </div>
-        </>
+          {horizonRows.map(([h, s]) => (
+            <HitBar
+              key={h}
+              label={h}
+              value={s.hit_rate_pct}
+              sublabel={`${s.total} pred.`}
+            />
+          ))}
+        </div>
       )}
 
-      {/* ── ACCIONES ── */}
+      {/* ── ACTUALIZAR ── */}
       <div className="dashboard-actions">
         <button onClick={loadData} className="refresh-btn" disabled={loading}>
           {loading ? "Sincronizando..." : "Actualizar"}
@@ -309,19 +373,3 @@ export default function Global() {
     </div>
   );
 }
-
-// ─── Sub-componentes ─────────────────────────────────────
-
-function SectionTitle({ title }) {
-  return <h2 className="section-title">{title}</h2>;
-}
-
-function StatCard({ label, value, color = "#ffffff", big = false }) {
-  return (
-    <div className={`stat-card ${big ? "stat-big" : ""}`}>
-      <span className="stat-label">{label}</span>
-      <div className="stat-value" style={{ color }}>{value}</div>
-    </div>
-  );
-      }
-  
