@@ -288,13 +288,20 @@ export default function Global() {
           <div className="g-section-title">Calidad Predictiva</div>
           <div className="g-section-sub">Modelo · sin PnL real</div>
         </div>
+        {model?.trend && (
+          <span className={`g-trend-badge g-trend-${model.trend}`}>
+            {model.trend === "mejorando"   ? "▲ Mejorando"   :
+             model.trend === "empeorando" ? "▼ Empeorando" : "→ Estable"}
+          </span>
+        )}
       </div>
 
+      {/* Hit rate histórico vs reciente */}
       <div className="g-kpi-row">
         <div className="g-kpi-main" style={{ borderColor: hitColor }}>
-          <span className="g-kpi-label">Hit Rate Direccional</span>
+          <span className="g-kpi-label">Hit Rate Histórico</span>
           <span className="g-kpi-val" style={{ color: hitColor }}>{fmtPct(hitDir, 1)}</span>
-          <span className="g-kpi-hint">dirección correcta</span>
+          <span className="g-kpi-hint">todas las evaluaciones</span>
         </div>
         <div className="g-kpi-main">
           <span className="g-kpi-label">Error Promedio</span>
@@ -302,6 +309,43 @@ export default function Global() {
           <span className="g-kpi-hint">predicho vs real</span>
         </div>
       </div>
+
+      {/* Ventanas recientes — tendencia del fix */}
+      {(model?.hit_rate_7d_pct != null || model?.hit_rate_14d_pct != null || model?.hit_rate_30d_pct != null) && (
+        <div className="g-bars-block">
+          <p className="g-bars-title">Tendencia reciente</p>
+
+          {model?.hit_rate_7d_pct != null && (
+            <HitBar
+              label="7 días"
+              value={model.hit_rate_7d_pct}
+              sublabel={`${model.recent_window_sizes?.["7d"] ?? "—"} eval.`}
+            />
+          )}
+          {model?.hit_rate_14d_pct != null && (
+            <HitBar
+              label="14 días"
+              value={model.hit_rate_14d_pct}
+              sublabel={`${model.recent_window_sizes?.["14d"] ?? "—"} eval.`}
+            />
+          )}
+          {model?.hit_rate_30d_pct != null && (
+            <HitBar
+              label="30 días"
+              value={model.hit_rate_30d_pct}
+              sublabel={`${model.recent_window_sizes?.["30d"] ?? "—"} eval.`}
+            />
+          )}
+
+          {/* Línea histórica como referencia */}
+          {hitDir != null && (
+            <div className="g-hist-ref">
+              <span>Histórico total</span>
+              <span style={{ color: hitColor }}>{fmtPct(hitDir, 1)}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="g-coverage-row">
         <div className="g-cov-item">
