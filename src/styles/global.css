@@ -1307,3 +1307,50 @@ a {
   font-weight: 700;
   font-size: 12px;
 }
+/* =====================================================
+   PORTFOLIO TABLE — append a global.css
+   ===================================================== */
+
+.pf-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  margin-bottom: 12px;
+}
+
+.pf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+
+.pf-table th {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.pf-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pf-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pf-table tbody tr:hover td {
+  background: var(--bg-card-hover);
+}
