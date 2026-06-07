@@ -26,6 +26,8 @@ function reasonLabel(reason) {
     alpha_below_threshold:    "Alpha bajo threshold",
     liquidity_gate_triggered: "Liquidez insuficiente",
     kill_switch:              "Kill switch",
+    kill_switch_close:        "Cerrar posición",
+    kill_switch_no_open:      "Kill switch",
     no_alpha:                 "Sin alpha",
   };
   return map[reason] || reason;
