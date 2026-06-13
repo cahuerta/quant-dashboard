@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,14 +12,12 @@ import {
   Area,
   BarChart,
   Bar,
-  Cell
+  Cell,
+  Line,
+  LineChart,
 } from "recharts";
 
 const API = import.meta.env.VITE_API_URL;
-
-/* =======================================================
-   HELPERS
-   ======================================================= */
 
 const fmt$ = (v, isChile = false) => {
   if (v == null) return "—";
@@ -39,14 +35,10 @@ const fmtPct = (v, decimals = 2) => {
 /* =======================================================
    HOOK DATA
    ======================================================= */
-
 const useAnalysisData = (ticker, apiUrl) => {
   const [data, setData] = useState({
-    meta: null,
-    prediction: null,
-    historical: null,
-    alpha: null,
-    full_latest: null,
+    meta: null, prediction: null, historical: null,
+    alpha: null, full_latest: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -57,9 +49,7 @@ const useAnalysisData = (ticker, apiUrl) => {
       setData({ meta: null, prediction: null, historical: null, alpha: null, full_latest: null });
       return;
     }
-
     let cancelled = false;
-
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -68,19 +58,13 @@ const useAnalysisData = (ticker, apiUrl) => {
           fetch(`${apiUrl}/dashboard/latest/${ticker}`, { cache: "no-store" }),
           fetch(`${apiUrl}/alpha`, { cache: "no-store" }),
         ]);
-
         if (!resLatest.ok) throw new Error(`Latest: ${resLatest.status}`);
         if (!resAlpha.ok)  throw new Error(`Alpha: ${resAlpha.status}`);
-
         const [jsonLatest, jsonAlpha] = await Promise.all([
-          resLatest.json(),
-          resAlpha.json(),
+          resLatest.json(), resAlpha.json(),
         ]);
-
         if (cancelled) return;
-
         const last = jsonLatest?.latest || null;
-
         setData({
           meta:        last?.meta        || null,
           prediction:  last?.prediction  || null,
@@ -95,15 +79,9 @@ const useAnalysisData = (ticker, apiUrl) => {
         if (!cancelled) setLoading(false);
       }
     };
-
     load();
-
-    // Refresco automático cada 60s — se cancela al desmontar o cambiar ticker
     const id = setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
+    return () => { cancelled = true; clearInterval(id); };
   }, [ticker, apiUrl]);
 
   return { data, loading, error, lastFetch };
@@ -112,11 +90,9 @@ const useAnalysisData = (ticker, apiUrl) => {
 /* =======================================================
    MAIN
    ======================================================= */
-
 export default function Analysis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryTicker = searchParams.get("ticker");
-
   const [ticker, setTicker]   = useState(queryTicker || "");
   const [tickers, setTickers] = useState([]);
 
@@ -134,12 +110,9 @@ export default function Analysis() {
     else        setSearchParams({}, { replace: true });
   }, [ticker, setSearchParams]);
 
-  // ── Model Diagnostics H1–H10 ────────────────────────
-  // JSON real: models_diagnostics[H].pred_return (no pred_ret)
   const chartDataModels = useMemo(() => {
     const models = data.full_latest?.models_diagnostics;
     if (!models || typeof models !== "object") return [];
-
     return Object.entries(models)
       .sort((a, b) => (a[1].horizon ?? 0) - (b[1].horizon ?? 0))
       .map(([model, v]) => ({
@@ -150,57 +123,35 @@ export default function Analysis() {
       }));
   }, [data.full_latest]);
 
-  // ── Historical metrics como barras comparativas ─────
-  // JSON real: historical.{hit_rate_mean, mae_mean, rmse_mean, n_windows}
-  // No hay windows[] — mostramos métricas escaladas como chart de referencia
+  // [FIX MAE] mae_mean ya viene en % — no multiplicar por 100
   const chartDataHistorical = useMemo(() => {
     const h = data.historical;
     if (!h) return [];
-    return [
-      {
-        metric: "Hit Rate",
-        value:  Number((h.hit_rate_mean * 100).toFixed(1)),
-        ref:    50,
-        unit:   "%",
-      },
-      {
-        metric: "MAE",
-        value:  Number((h.mae_mean * 100).toFixed(2)),
-        ref:    null,
-        unit:   "%",
-      },
-      {
-        metric: "RMSE",
-        value:  Number((h.rmse_mean * 100).toFixed(2)),
-        ref:    null,
-        unit:   "%",
-      },
-    ];
+    const hitRate = h.hit_rate_mean != null ? Number((h.hit_rate_mean * 100).toFixed(1)) : null;
+    // mae_mean viene directo en % desde evaluator v2.2
+    const mae     = h.mae_mean != null ? Number(Number(h.mae_mean).toFixed(2)) : null;
+    const rows = [];
+    if (hitRate != null) rows.push({ metric: "Hit Rate", value: hitRate, ref: 50, unit: "%" });
+    if (mae     != null) rows.push({ metric: "MAE",      value: mae,     ref: null, unit: "%" });
+    return rows;
   }, [data.historical]);
 
-  // ── Forecast Cone ───────────────────────────────────
   const chartDataFuture = useMemo(() => {
     const curve    = data.full_latest?.price_curve;
     const priceNow = curve?.price_now ?? data.prediction?.price_now ?? 0;
     const hitRate  = Number(data.historical?.hit_rate_mean ?? 0.5);
-
     if (!curve?.price_path?.length) return [];
-
     const rows = [{
-      label: "Hoy",
-      price: priceNow,
+      label: "Hoy", price: priceNow,
       l90: priceNow, l70: priceNow, l50: priceNow,
       u50: priceNow, u70: priceNow, u90: priceNow,
     }];
-
     curve.price_path.forEach((p, i) => {
       const day     = i + 1;
       const price   = Number(p ?? priceNow);
       const baseVol = price * Math.max(0.008, (1 - hitRate) * 0.05) * Math.min(day / 8, 1.2);
-
       rows.push({
-        label: `T+${day}`,
-        price,
+        label: `T+${day}`, price,
         l50: Number((price - baseVol * 0.45).toFixed(2)),
         u50: Number((price + baseVol * 0.45).toFixed(2)),
         l70: Number((price - baseVol * 0.75).toFixed(2)),
@@ -209,37 +160,27 @@ export default function Analysis() {
         u90: Number((price + baseVol * 1.15).toFixed(2)),
       });
     });
-
     return rows;
   }, [data.full_latest, data.prediction, data.historical]);
 
   const isChile = ticker.endsWith(".SN") || ticker.endsWith(".CL");
-
   const handleTickerChange = useCallback((e) => setTicker(e.target.value), []);
 
-  if (error) return (
-    <div style={S.page}>
-      <div style={S.errorBox}>⚠ {error}</div>
-    </div>
-  );
+  if (error) return <div style={S.page}><div style={S.errorBox}>⚠ {error}</div></div>;
 
   return (
     <div style={S.page}>
       <div style={S.container}>
 
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <div style={S.header}>
           <div style={{ minWidth: 0 }}>
             <h1 style={S.title}>
               {ticker ? ticker : "---"}
-              {ticker && (
-                <span style={S.titleSub}>
-                  {isChile ? " 🇨🇱" : " 🌎"}
-                </span>
-              )}
+              {ticker && <span style={S.titleSub}>{isChile ? " 🇨🇱" : " 🌎"}</span>}
             </h1>
             <p style={S.subtitle}>
-              Terminal de Análisis · v3.6
+              Terminal de Análisis · v3.7
               {lastFetch && (
                 <span style={S.lastFetch}>
                   {" "}· {lastFetch.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
@@ -247,7 +188,6 @@ export default function Analysis() {
               )}
             </p>
           </div>
-
           <div style={S.selectorWrap}>
             <label style={S.selectorLabel}>Activo</label>
             <select value={ticker} onChange={handleTickerChange} style={S.select}>
@@ -265,7 +205,7 @@ export default function Analysis() {
         {data.prediction && !loading && (
           <div style={S.contentGrid}>
 
-            {/* ── KPIs ── */}
+            {/* KPIs */}
             <div style={S.kpiGrid}>
               <BloqueResumen    prediction={data.prediction} isChile={isChile} />
               <BloqueAlphaScore alphaData={data.alpha} />
@@ -273,13 +213,13 @@ export default function Analysis() {
               <BloqueEnsemble  fullLatest={data.full_latest} />
             </div>
 
-            {/* ── CHARTS SUPERIORES ── */}
+            {/* CHARTS */}
             <div style={S.chartGrid}>
               <ChartHistoricalMetrics data={chartDataHistorical} historical={data.historical} />
               <ChartModelDiagnostics  data={chartDataModels} />
             </div>
 
-            {/* ── FORECAST CONE ── */}
+            {/* FORECAST CONE */}
             <ChartForecastCone
               data={chartDataFuture}
               priceNow={data.full_latest?.price_curve?.price_now ?? data.prediction?.price_now}
@@ -297,17 +237,15 @@ export default function Analysis() {
    CHARTS
    ======================================================= */
 
-// Reemplaza el Backtest (que requería windows[] inexistente)
-// Muestra las métricas históricas reales del modelo como barras
 const ChartHistoricalMetrics = ({ data, historical }) => {
   const nWindows = historical?.n_windows ?? 0;
-  const pca      = historical?.pca_dims  ?? 0;
+  const source   = historical?.source === "evaluations_v2" ? "evaluaciones limpias v2.2" : "legacy";
 
   return (
     <div style={S.card}>
       <div style={S.cardTitle}>Métricas Históricas del Modelo</div>
       <div style={{ ...S.cardMeta, marginBottom: 12 }}>
-        {nWindows} ventanas OOS · {pca} dims PCA
+        {nWindows} evaluaciones · {source}
       </div>
       <div style={S.chartWrap}>
         <ResponsiveContainer width="100%" height="100%">
@@ -327,7 +265,9 @@ const ChartHistoricalMetrics = ({ data, historical }) => {
                   key={i}
                   fill={
                     entry.metric === "Hit Rate"
-                      ? entry.value >= 52 ? "#22c55e" : entry.value >= 48 ? "#eab308" : "#ef4444"
+                      ? entry.value >= 55 ? "#22c55e"
+                        : entry.value >= 48 ? "#eab308"
+                        : "#ef4444"
                       : "#38bdf8"
                   }
                 />
@@ -340,11 +280,8 @@ const ChartHistoricalMetrics = ({ data, historical }) => {
   );
 };
 
-// Model Diagnostics H1–H10
-// pred_return es el key correcto del JSON real
 const ChartModelDiagnostics = ({ data }) => {
   const hasReal = data.some((d) => d.real != null);
-
   return (
     <div style={S.card}>
       <div style={S.cardTitle}>Model Diagnostics H1–H10</div>
@@ -354,10 +291,7 @@ const ChartModelDiagnostics = ({ data }) => {
             <CartesianGrid stroke="rgba(255,255,255,0.07)" />
             <XAxis dataKey="model" stroke="#94a3b8" tick={{ fontSize: 12 }} />
             <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} unit="%" />
-            <Tooltip
-              contentStyle={S.tooltip}
-              formatter={(v) => [`${v}%`, ""]}
-            />
+            <Tooltip contentStyle={S.tooltip} formatter={(v) => [`${v}%`, ""]} />
             <Legend />
             <ReferenceLine y={0} stroke="#64748b" />
             <Bar dataKey="pred" name="Retorno Predicho %" radius={[6, 6, 0, 0]}>
@@ -375,17 +309,12 @@ const ChartModelDiagnostics = ({ data }) => {
   );
 };
 
-// Forecast Cone — bandas de incertidumbre H1–H9
 const ChartForecastCone = ({ data, priceNow, isChile }) => {
   const fmt = (v) => fmt$(v, isChile);
-
   if (!data.length) return null;
-
   return (
     <div style={S.card}>
-      <div style={{ ...S.cardTitle, color: "#fbbf24" }}>
-        Forecast Cone (H1–H9)
-      </div>
+      <div style={{ ...S.cardTitle, color: "#fbbf24" }}>Forecast Cone (H1–H9)</div>
       <div style={{ ...S.chartWrap, height: 360 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
@@ -405,12 +334,7 @@ const ChartForecastCone = ({ data, priceNow, isChile }) => {
             </defs>
             <CartesianGrid stroke="rgba(255,255,255,0.07)" />
             <XAxis dataKey="label" stroke="#94a3b8" tick={{ fontSize: 12 }} />
-            <YAxis
-              stroke="#94a3b8"
-              tick={{ fontSize: 11 }}
-              tickFormatter={fmt}
-              width={isChile ? 80 : 65}
-            />
+            <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} tickFormatter={fmt} width={isChile ? 80 : 65} />
             <Tooltip
               contentStyle={S.tooltip}
               formatter={(v, name) => {
@@ -420,36 +344,18 @@ const ChartForecastCone = ({ data, priceNow, isChile }) => {
               itemSorter={(a) => (a.dataKey === "price" ? -1 : 1)}
             />
             {priceNow && (
-              <ReferenceLine
-                y={priceNow}
-                stroke="#475569"
-                strokeDasharray="4 4"
-                label={{ value: "Precio actual", fill: "#94a3b8", fontSize: 11, position: "insideTopRight" }}
-              />
+              <ReferenceLine y={priceNow} stroke="#475569" strokeDasharray="4 4"
+                label={{ value: "Precio actual", fill: "#94a3b8", fontSize: 11, position: "insideTopRight" }} />
             )}
-
-            {/* Banda 90% */}
             <Area type="monotone" dataKey="u90" stroke="none" fill="url(#cone90)" legendType="none" name="u90" />
             <Area type="monotone" dataKey="l90" stroke="none" fill="url(#cone90)" legendType="none" name="l90" />
-
-            {/* Banda 70% */}
             <Area type="monotone" dataKey="u70" stroke="none" fill="url(#cone70)" legendType="none" name="u70" />
             <Area type="monotone" dataKey="l70" stroke="none" fill="url(#cone70)" legendType="none" name="l70" />
-
-            {/* Banda 50% */}
             <Area type="monotone" dataKey="u50" stroke="none" fill="url(#cone50)" legendType="none" name="u50" />
             <Area type="monotone" dataKey="l50" stroke="none" fill="url(#cone50)" legendType="none" name="l50" />
-
-            {/* Trayectoria central */}
-            <Line
-              type="monotone"
-              dataKey="price"
-              name="Trayectoria esperada"
-              stroke="#fbbf24"
-              strokeWidth={3}
-              dot={{ r: 3, fill: "#fbbf24" }}
-              activeDot={{ r: 5 }}
-            />
+            <Line type="monotone" dataKey="price" name="Trayectoria esperada"
+              stroke="#fbbf24" strokeWidth={3}
+              dot={{ r: 3, fill: "#fbbf24" }} activeDot={{ r: 5 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -467,20 +373,13 @@ function BloqueResumen({ prediction, isChile }) {
     rec === "COMPRA"                    ? "#22c55e" :
     rec === "VENTA" || rec === "VENDE"  ? "#ef4444" :
     "#eab308";
-
   return (
     <div style={{ ...S.card, borderLeft: `4px solid ${color}` }}>
       <div style={S.kpiLabel}>RECOMENDACIÓN</div>
       <div style={{ ...S.kpiBig, color }}>{rec}</div>
-      <div style={S.kpiSub}>
-        Target {fmtPct(prediction.ret_ens_pct)}
-      </div>
-      <div style={S.kpiSub}>
-        Obj {fmt$(prediction.price_pred, isChile)}
-      </div>
-      <div style={S.kpiSub}>
-        Actual {fmt$(prediction.price_now, isChile)}
-      </div>
+      <div style={S.kpiSub}>Target {fmtPct(prediction.ret_ens_pct)}</div>
+      <div style={S.kpiSub}>Obj {fmt$(prediction.price_pred, isChile)}</div>
+      <div style={S.kpiSub}>Actual {fmt$(prediction.price_now, isChile)}</div>
       <div style={{ ...S.kpiSub, color: "#64748b", fontSize: 13, marginTop: 8 }}>
         θ {prediction.theta_dynamic_pct?.toFixed(3) ?? "—"}%
       </div>
@@ -489,10 +388,9 @@ function BloqueResumen({ prediction, isChile }) {
 }
 
 function BloqueAlphaScore({ alphaData }) {
-  const score = Number(alphaData?.alpha_score ?? 0);
+  const score    = Number(alphaData?.alpha_score ?? 0);
   const hasError = !!alphaData?.error;
-  const color = hasError ? "#64748b" : score > 0 ? "#22c55e" : score < 0 ? "#ef4444" : "#94a3b8";
-
+  const color    = hasError ? "#64748b" : score > 0 ? "#22c55e" : score < 0 ? "#ef4444" : "#94a3b8";
   return (
     <div style={{ ...S.card, textAlign: "center" }}>
       <div style={S.kpiLabel}>ALPHA SCORE</div>
@@ -501,25 +399,39 @@ function BloqueAlphaScore({ alphaData }) {
         <div style={{ ...S.kpiSub, color: "#fbbf24", fontSize: 13 }}>🔥 θ cleared</div>
       )}
       {hasError && (
-        <div style={{ ...S.kpiSub, color: "#64748b", fontSize: 12 }}>
-          {alphaData.error}
-        </div>
+        <div style={{ ...S.kpiSub, color: "#64748b", fontSize: 12 }}>{alphaData.error}</div>
       )}
     </div>
   );
 }
 
 function BloqueRobustez({ historical }) {
-  const hit   = Number((historical?.hit_rate_mean ?? 0) * 100);
-  const mae   = Number((historical?.mae_mean ?? 0) * 100);
-  const color = hit >= 55 ? "#22c55e" : hit >= 48 ? "#eab308" : "#ef4444";
+  // [FIX MAE v3.7] mae_mean ya viene en % desde evaluator v2.2
+  // hit_rate_mean viene en fracción (0-1) → multiplicar por 100
+  // mae_mean viene directo en % → NO multiplicar por 100
+  const hit   = historical?.hit_rate_mean != null
+    ? Number((historical.hit_rate_mean * 100).toFixed(1))
+    : null;
+  const mae   = historical?.mae_mean != null
+    ? Number(Number(historical.mae_mean).toFixed(2))
+    : null;
+  const n     = historical?.n_windows ?? 0;
+  const color = hit == null ? "#64748b"
+    : hit >= 55 ? "#22c55e"
+    : hit >= 48 ? "#eab308"
+    : "#ef4444";
 
   return (
     <div style={S.card}>
       <div style={S.kpiLabel}>HIT RATE</div>
-      <div style={{ ...S.kpiBig, color }}>{hit.toFixed(1)}%</div>
+      <div style={{ ...S.kpiBig, color }}>
+        {hit != null ? `${hit.toFixed(1)}%` : "—"}
+      </div>
       <div style={{ ...S.kpiSub, color: "#64748b", fontSize: 13 }}>
-        MAE {mae.toFixed(2)}%
+        MAE {mae != null ? `${mae.toFixed(2)}%` : "—"}
+      </div>
+      <div style={{ ...S.kpiSub, color: "#475569", fontSize: 12 }}>
+        {n} evaluaciones
       </div>
     </div>
   );
@@ -530,7 +442,6 @@ function BloqueEnsemble({ fullLatest }) {
   const models = fullLatest?.models_diagnostics ?? {};
   const count  = Object.keys(models).length;
   const color  = count >= 8 ? "#22c55e" : count >= 5 ? "#eab308" : "#ef4444";
-
   return (
     <div style={S.card}>
       <div style={S.kpiLabel}>ENSEMBLE</div>
@@ -545,7 +456,6 @@ function BloqueEnsemble({ fullLatest }) {
 /* =======================================================
    STYLES
    ======================================================= */
-
 const S = {
   page: {
     minHeight: "100vh",
