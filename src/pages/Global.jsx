@@ -78,6 +78,9 @@ export default function Global() {
   const [analysis,      setAnalysis]      = useState(null);
   const [analysisStatus,setAnalysisStatus]= useState("idle"); // idle | running | ready | error
 
+  const [realPerf,       setRealPerf]       = useState(null);
+  const [realPerfStatus, setRealPerfStatus] = useState("idle"); // idle | running | ready | error
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setErrors({});
@@ -122,6 +125,15 @@ export default function Global() {
         if (d.status === "ready") setAnalysis(d);
       }
     } catch (_) {}
+
+    // Cargar real-performance cacheado si existe
+    try {
+      const r2 = await fetch(`${API}/dashboard/real-performance`, { cache: "no-store" });
+      if (r2.ok) {
+        const d2 = await r2.json();
+        if (d2.status === "ready") setRealPerf(d2);
+      }
+    } catch (_) {}
   }, []);
 
   useEffect(() => {
@@ -154,6 +166,32 @@ export default function Global() {
       }, 1000);
     } catch (_) {
       setAnalysisStatus("error");
+    }
+  }, []);
+
+  const runRealPerformance = useCallback(async () => {
+    setRealPerfStatus("running");
+    try {
+      await fetch(`${API}/dashboard/real-performance/run`, { method: "POST" });
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        const r = await fetch(`${API}/dashboard/real-performance`, { cache: "no-store" });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.status === "ready") {
+            setRealPerf(d);
+            setRealPerfStatus("ready");
+            clearInterval(poll);
+          }
+        }
+        if (attempts > 35) { // timeout ~35s
+          setRealPerfStatus("error");
+          clearInterval(poll);
+        }
+      }, 1000);
+    } catch (_) {
+      setRealPerfStatus("error");
     }
   }, []);
 
@@ -433,7 +471,7 @@ export default function Global() {
         </div>
       )}
 
-            {/* ════════════════════════════════
+      {/* ════════════════════════════════
           BLOQUE 3 — SISTEMA vs MANUAL
       ════════════════════════════════ */}
       <div className="g-section-header" style={{ marginTop: 36 }}>
@@ -552,6 +590,120 @@ export default function Global() {
                 disabled={analysisStatus === "running"}
               >
                 ↺ Actualizar análisis
+              </button>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* ════════════════════════════════
+          BLOQUE 4 — PERFORMANCE REAL (SHARPE/DRAWDOWN)
+      ════════════════════════════════ */}
+      <div className="g-section-header" style={{ marginTop: 36 }}>
+        <span className="g-section-icon">📊</span>
+        <div>
+          <div className="g-section-title">Sharpe & Drawdown Real</div>
+          <div className="g-section-sub">Teórico (modelo) vs Real (cuenta Alpaca)</div>
+        </div>
+      </div>
+
+      {!realPerf && realPerfStatus !== "running" && (
+        <div className="g-analysis-empty">
+          <p>Análisis no ejecutado aún.</p>
+          <button className="g-run-btn" onClick={runRealPerformance}>
+            ▶ Calcular Sharpe/Drawdown
+          </button>
+        </div>
+      )}
+
+      {realPerfStatus === "running" && (
+        <div className="g-analysis-loading">
+          <span className="g-spin">⟳</span> Calculando (puede tardar ~30s)...
+        </div>
+      )}
+
+      {realPerf && realPerf.status === "ready" && (() => {
+        const t = realPerf.theoretical?.ensemble;
+        const r = realPerf.real?.real_account;
+
+        return (
+          <>
+            <div className="g-compare-grid">
+              <div className="g-compare-card">
+                <span className="g-compare-label">🧮 Teórico (modelo)</span>
+                <span className="g-compare-val" style={{ color: "#38bdf8" }}>
+                  {t?.sharpe_newey_west != null ? t.sharpe_newey_west.toFixed(2) : "—"}
+                </span>
+                <span className="g-compare-sub">Sharpe (Newey-West)</span>
+                <div className="g-compare-row">
+                  <span>Max Drawdown</span>
+                  <span style={{ color: "#f97316" }}>{fmtPct((t?.max_drawdown ?? 0) * 100, 1)}</span>
+                </div>
+                <div className="g-compare-row">
+                  <span>Retorno Total</span>
+                  <span style={{ color: (t?.total_return_pct ?? 0) >= 0 ? "#22c55e" : "#ef4444" }}>
+                    {fmtPct(t?.total_return_pct, 1)}
+                  </span>
+                </div>
+                <div className="g-compare-row">
+                  <span>Trades</span>
+                  <span>{t?.n_trades ?? "—"}</span>
+                </div>
+              </div>
+
+              <div className="g-compare-card">
+                <span className="g-compare-label">💰 Real (Alpaca)</span>
+                <span className="g-compare-val" style={{ color: "#22c55e" }}>
+                  {r?.sharpe_newey_west != null ? r.sharpe_newey_west.toFixed(2) : "—"}
+                </span>
+                <span className="g-compare-sub">Sharpe (Newey-West)</span>
+                <div className="g-compare-row">
+                  <span>Max Drawdown</span>
+                  <span style={{ color: "#f97316" }}>{fmtPct((r?.max_drawdown ?? 0) * 100, 1)}</span>
+                </div>
+                <div className="g-compare-row">
+                  <span>Retorno Total</span>
+                  <span style={{ color: (r?.total_return_pct ?? 0) >= 0 ? "#22c55e" : "#ef4444" }}>
+                    {fmtPct(r?.total_return_pct, 1)}
+                  </span>
+                </div>
+                <div className="g-compare-row">
+                  <span>Trades</span>
+                  <span>{r?.n_trades ?? "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            {realPerf.real?.closed_early_stats && (
+              <div className="g-bars-block">
+                <p className="g-bars-title">Impacto de cerrar antes del horizonte</p>
+                <div className="g-compare-row">
+                  <span>Dinero dejado sobre la mesa</span>
+                  <span style={{ color: "#f97316" }}>
+                    {realPerf.real.closed_early_stats.n_oportunidad_perdida ?? 0} veces
+                    ({fmtPct(realPerf.real.closed_early_stats.avg_oportunidad_perdida_pct, 1)} prom.)
+                  </span>
+                </div>
+                <div className="g-compare-row">
+                  <span>Pérdida mayor evitada</span>
+                  <span style={{ color: "#22c55e" }}>
+                    {realPerf.real.closed_early_stats.n_oportunidad_ganada ?? 0} veces
+                    ({fmtPct(realPerf.real.closed_early_stats.avg_oportunidad_ganada_pct, 1)} prom.)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="g-analysis-footer">
+              <span className="g-updated">
+                Generado {realPerf.generated_at ? new Date(realPerf.generated_at).toLocaleString("es-CL") : "—"}
+              </span>
+              <button
+                className="g-run-btn g-run-btn-sm"
+                onClick={runRealPerformance}
+                disabled={realPerfStatus === "running"}
+              >
+                ↺ Recalcular
               </button>
             </div>
           </>
