@@ -70,6 +70,7 @@ export default function Global() {
   const [equity,     setEquity]     = useState([]);
   const [equityMeta, setEquityMeta] = useState(null);
   const [model,      setModel]      = useState(null);
+  const [market,     setMarket]     = useState(null);   // [MKT] estado del régimen de mercado
   const [loading,    setLoading]    = useState(true);
   const [lastUpdated,setLastUpdated]= useState(null);
   const [errors,     setErrors]     = useState({});
@@ -81,10 +82,11 @@ export default function Global() {
     setLoading(true);
     setErrors({});
 
-    const [perfRes, equityRes, modelRes] = await Promise.allSettled([
-      fetch(`${API}/dashboard/performance`,   { cache: "no-store" }),
-      fetch(`${API}/dashboard/equity-curve`,  { cache: "no-store" }),
-      fetch(`${API}/dashboard/model-quality`, { cache: "no-store" }),
+    const [perfRes, equityRes, modelRes, marketRes] = await Promise.allSettled([
+      fetch(`${API}/dashboard/performance`,     { cache: "no-store" }),
+      fetch(`${API}/dashboard/equity-curve`,    { cache: "no-store" }),
+      fetch(`${API}/dashboard/model-quality`,   { cache: "no-store" }),
+      fetch(`${API}/dashboard/market-context`,  { cache: "no-store" }), // [MKT]
     ]);
 
     const errs = {};
@@ -102,6 +104,11 @@ export default function Global() {
     if (modelRes.status === "fulfilled" && modelRes.value.ok)
       setModel(await modelRes.value.json());
     else errs.model = "No disponible";
+
+    // [MKT] Estado del mercado
+    if (marketRes.status === "fulfilled" && marketRes.value.ok)
+      setMarket(await marketRes.value.json());
+    else errs.market = "No disponible";
 
     setErrors(errs);
     setLastUpdated(new Date().toISOString());
@@ -163,6 +170,12 @@ export default function Global() {
   const hitDir      = model?.hit_rate_direction_pct ?? null;
   const hitColor    = hitDir == null ? "#fff" : hitDir >= 55 ? "#22c55e" : hitDir >= 45 ? "#f97316" : "#ef4444";
 
+  // [MKT] Color según régimen de mercado
+  const marketColor =
+    market?.market_mode === "growth"    ? "#22c55e" :
+    market?.market_mode === "defensive" ? "#ef4444" :
+    market?.market_mode === "neutral"   ? "#f97316" : "#fff";
+
   const byHorizon  = model?.by_horizon ?? {};
   const horizonRows = Object.entries(byHorizon)
     .filter(([, v]) => v.hit_rate_pct != null)
@@ -195,13 +208,46 @@ export default function Global() {
           {errors.perf   && <span>⚠ Broker: {errors.perf}</span>}
           {errors.equity && <span>⚠ Equity: {errors.equity}</span>}
           {errors.model  && <span>⚠ Modelo: {errors.model}</span>}
+          {errors.market && <span>⚠ Mercado: {errors.market}</span>}
         </div>
+      )}
+
+      {/* ════════════════════════════════
+          BLOQUE 0 — ESTADO DEL MERCADO [MKT]
+      ════════════════════════════════ */}
+      <div className="g-section-header">
+        <span className="g-section-icon">🌐</span>
+        <div>
+          <div className="g-section-title">Estado del Mercado</div>
+          <div className="g-section-sub">Régimen cuantitativo + cualitativo</div>
+        </div>
+      </div>
+
+      <div className="g-kpi-row">
+        <div className="g-kpi-main" style={{ borderColor: marketColor }}>
+          <span className="g-kpi-label">Modo Mercado</span>
+          <span className="g-kpi-val" style={{ color: marketColor }}>
+            {market?.market_mode?.toUpperCase() || "—"}
+          </span>
+        </div>
+        <div className="g-kpi-main">
+          <span className="g-kpi-label">Confianza Régimen</span>
+          <span className="g-kpi-val">
+            {market?.confidence != null ? `${Math.round(market.confidence * 100)}%` : "—"}
+          </span>
+        </div>
+      </div>
+
+      {market?.reason && (
+        <p className="g-bars-title" style={{ fontWeight: 400, opacity: 0.8 }}>
+          {market.reason}
+        </p>
       )}
 
       {/* ════════════════════════════════
           BLOQUE 1 — PERFORMANCE REAL
       ════════════════════════════════ */}
-      <div className="g-section-header">
+      <div className="g-section-header" style={{ marginTop: 36 }}>
         <span className="g-section-icon">📈</span>
         <div>
           <div className="g-section-title">Performance Real</div>
@@ -387,7 +433,7 @@ export default function Global() {
         </div>
       )}
 
-      {/* ════════════════════════════════
+            {/* ════════════════════════════════
           BLOQUE 3 — SISTEMA vs MANUAL
       ════════════════════════════════ */}
       <div className="g-section-header" style={{ marginTop: 36 }}>
